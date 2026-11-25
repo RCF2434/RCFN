@@ -73,6 +73,10 @@ main:focus {
   color: var(--accent-text);
 }
 
+.list-title {
+  font-size: 2em;
+}
+
 .skip-link {
   position: absolute;
   left: 1rem;
@@ -387,7 +391,8 @@ main {
 }
 
 .page-head h1 {
-  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 500;
 }
 
 .lead {
@@ -670,6 +675,18 @@ main {
 
 .notice--warning {
   border-left-color: var(--warning);
+}
+
+/* 發布前預覽頁最上方的提示 */
+.notice--preview {
+  border-left-color: var(--gold);
+  color: var(--text);
+}
+
+.video-page > .notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
 }
 
 .notice ul {
@@ -1302,6 +1319,18 @@ code.mono {
   font-size: 1.35rem;
 }
 
+.publish-preview__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.publish-preview__actions .field__hint {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
 .preview-empty {
   display: grid;
   place-items: center;
@@ -1585,14 +1614,26 @@ code.mono {
 .search--tags {
   flex-wrap: wrap;
   gap: var(--space-xs);
-  padding-block: 0.4rem;
+  padding-block: 0.6rem;
   padding-inline: 1rem 0.4rem;
   cursor: text;
 }
 
 .search--tags input {
   min-width: 8rem;
-  min-height: 34px;
+  min-height: 30px;
+}
+
+/* 搜尋框內的標籤較精簡 */
+.search--tags .tag-chip {
+  min-height: 28px;
+  padding: 0.15rem 0.6rem;
+}
+
+.search--tags .tag-chip__remove {
+  width: 20px;
+  height: 20px;
+  margin-right: -0.3rem;
 }
 
 .search__clear {

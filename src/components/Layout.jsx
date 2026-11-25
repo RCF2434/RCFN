@@ -18,7 +18,7 @@ export default function Layout() {
         <div className="container site-nav__inner">
           <Link to="/" className="brand">
             <Ticket size={22} aria-hidden="true" />
-            非官方字幕
+            RCFN · 非官方字幕
           </Link>
           <nav className="site-nav__links" aria-label="主要導覽">
             <NavLink to="/" end className="nav-link">
@@ -33,8 +33,7 @@ export default function Layout() {
       </main>
       <footer className="site-footer">
         <div className="container site-footer__inner">
-          <span>非官方字幕 · 外掛字幕依說話人上色</span>
-          {/* 只在本機開發時顯示，上線版本不會有（見 App.jsx） */}
+          <span>RCFN · 非官方字幕</span>
           {(import.meta.env.DEV || import.meta.env.VITE_PUBLISH_PAGE === 'true') && (
             <>
               <Link to="/publish" className="site-footer__link">

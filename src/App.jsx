@@ -16,6 +16,10 @@ const TagColorsPage =
   import.meta.env.DEV || import.meta.env.VITE_PUBLISH_PAGE === 'true'
     ? lazy(() => import('./pages/TagColorsPage.jsx'))
     : null;
+const PreviewPage =
+  import.meta.env.DEV || import.meta.env.VITE_PUBLISH_PAGE === 'true'
+    ? lazy(() => import('./pages/PreviewPage.jsx'))
+    : null;
 
 export default function App() {
   return (
@@ -39,6 +43,16 @@ export default function App() {
             element={
               <Suspense fallback={<div className="container page-loading">載入中…</div>}>
                 <TagColorsPage />
+              </Suspense>
+            }
+          />
+        )}
+        {PreviewPage && (
+          <Route
+            path="preview"
+            element={
+              <Suspense fallback={<div className="container page-loading">載入中…</div>}>
+                <PreviewPage />
               </Suspense>
             }
           />

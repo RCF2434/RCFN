@@ -35,7 +35,7 @@ export async function publishVideo(gh, { branch, entry, subtitleText, mode, extr
       const commitSha = await gh.commitFiles({
         branch,
         head,
-        message: `${verb}影片：${entry.title}\n\n由非官方字幕的發布頁送出。`,
+        message: `${verb}影片：${entry.title}\n\n由RCFN · 非官方字幕的發布頁送出。`,
         files: [
           { path: `public/${entry.subtitle}`, content: subtitleText },
           { path: VIDEOS_PATH, content: serializeVideos(videos) },
@@ -57,7 +57,7 @@ export async function saveTagColors(gh, { branch, content }) {
       const commitSha = await gh.commitFiles({
         branch,
         head,
-        message: '更新標籤顏色\n\n由非官方字幕的標籤顏色頁送出。',
+        message: '更新標籤顏色\n\n由RCFN · 非官方字幕的標籤顏色頁送出。',
         files: [{ path: TAGS_PATH, content }],
       });
       return { commitSha };

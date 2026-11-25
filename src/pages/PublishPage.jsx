@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, ChevronDown, FileText, Send, Upload } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ExternalLink, FileText, Send, Upload } from 'lucide-react';
+import { clearDraft, openPreview, shareDraft } from '../lib/previewDraft.js';
 import { ID_RE, publicSiteUrl, publishVideo } from '../lib/publish.js';
 import { EMBED_BLOCKED, fetchOEmbed, parseYouTubeId } from '../lib/youtube.js';
 import { parseSRT, formatTime } from '../lib/srt.js';
+import { assToSRT, isASS } from '../lib/ass.js';
 import { resolveSpeakerColors, toSpeakerColor } from '../lib/speakers.js';
 import {
   ENCODINGS,
@@ -147,11 +149,18 @@ export default function PublishPage() {
 
   /* ---------- 解析字幕與配色 ---------- */
   const decoded = useMemo(() => {
-    if (sub?.buffer) return decodeSubtitle(sub.buffer, encoding);
+    if (sub?.buffer) {
+      const result = decodeSubtitle(sub.buffer, encoding);
+      if (!isASS(sub.name, result.text)) return result;
+      // ASS 檔：轉成 SRT，之後的預覽與發布都用轉好的內容
+      const converted = assToSRT(result.text);
+      return { ...result, text: converted.text, convertedFrom: 'ASS', warnings: converted.warnings };
+    }
     if (typeof sub?.text === 'string') return { text: sub.text, encoding: 'utf-8', garbled: false };
     return null;
   }, [sub, encoding]);
   const parsed = useMemo(() => (decoded ? parseSRT(decoded.text) : null), [decoded]);
+  const subWarnings = [...(decoded?.warnings ?? []), ...(parsed?.warnings ?? [])];
   const speakers = parsed?.speakers ?? EMPTY;
 
   const activeOverrides = useMemo(
@@ -233,26 +242,45 @@ export default function PublishPage() {
   const busy = job?.phase === 'committing';
   const canPublish = problems.length === 0 && !busy;
 
+  // 要寫進 videos.json 的這一筆；發布與新分頁預覽共用
+  const description = form.description.trim();
+  const entry = {
+    id,
+    youtubeId,
+    title: form.title.trim(),
+    description: description || undefined,
+    subtitle: existing?.subtitle ?? `subtitles/${id}.srt`,
+    speakers: speakers.length ? speakerConfig : undefined,
+    tags: tags.length ? tags : undefined,
+    channels: channels.some((r) => r.status === 'ready')
+      ? channels.filter((r) => r.status === 'ready').map((r) => r.channel)
+      : undefined,
+    channel: undefined, // 舊格式，一律改存 channels
+    notes: savedNotes.length ? savedNotes : undefined,
+    chat: chat.mode === 'keep' ? chat.path : chat.mode === 'new' ? chatPath : undefined,
+    // 查不到時（例如網路問題）沿用原本存的
+    uploader: uploader ?? (existing?.youtubeId === youtubeId ? existing?.uploader : undefined),
+  };
+
+  /* ---------- 新分頁預覽：把草稿交給預覽分頁 ---------- */
+  const entryKey = JSON.stringify(entry);
+  useEffect(() => {
+    if (!youtubeId) {
+      clearDraft();
+      return;
+    }
+    shareDraft({
+      video: JSON.parse(entryKey),
+      subs: parsed
+        ? { status: 'ready', error: null, cues: parsed.cues, speakers: parsed.speakers }
+        : { status: 'idle', error: null, cues: EMPTY, speakers: EMPTY },
+      chat: previewChat,
+    });
+  }, [youtubeId, entryKey, parsed, previewChat]);
+  useEffect(() => clearDraft, []);
+
   async function publish() {
     if (!canPublish) return;
-    const description = form.description.trim();
-    const entry = {
-      id,
-      youtubeId,
-      title: form.title.trim(),
-      description: description || undefined,
-      subtitle: existing?.subtitle ?? `subtitles/${id}.srt`,
-      speakers: speakers.length ? speakerConfig : undefined,
-      tags: tags.length ? tags : undefined,
-      channels: channels.some((r) => r.status === 'ready')
-        ? channels.filter((r) => r.status === 'ready').map((r) => r.channel)
-        : undefined,
-      channel: undefined, // 舊格式，一律改存 channels
-      notes: savedNotes.length ? savedNotes : undefined,
-      chat: chat.mode === 'keep' ? chat.path : chat.mode === 'new' ? chatPath : undefined,
-      // 查不到時（例如網路問題）沿用原本存的
-      uploader: uploader ?? (existing?.youtubeId === youtubeId ? existing?.uploader : undefined),
-    };
     setJob({ phase: 'committing', id });
     try {
       const result = await publishVideo(conn.gh, {
@@ -467,7 +495,7 @@ export default function PublishPage() {
             >
               <input
                 type="file"
-                accept=".srt,.txt"
+                accept=".srt,.ass,.ssa,.txt"
                 disabled={busy}
                 onChange={(event) => {
                   acceptFile(event.target.files?.[0]);
@@ -475,8 +503,8 @@ export default function PublishPage() {
                 }}
               />
               <Upload size={24} aria-hidden="true" />
-              <strong>{sub ? '換一個 .srt 檔' : '選擇 .srt 檔'}</strong>
-              <span>或把檔案拖曳到這裡</span>
+              <strong>{sub ? '換一個字幕檔' : '選擇 .srt 或 .ass 檔'}</strong>
+              <span>或把檔案拖曳到這裡；.ass 會自動轉成 .srt，Name 欄位當作說話人</span>
             </label>
 
             {sub && (
@@ -485,6 +513,9 @@ export default function PublishPage() {
                   <FileText size={16} aria-hidden="true" />
                   <span className="mono">{sub.name}</span>
                   {sub.source === 'repo' && <span className="muted">（目前 repo 裡的檔案）</span>}
+                  {decoded?.convertedFrom && (
+                    <span className="muted">（已從 {decoded.convertedFrom} 轉成 SRT，發布時存成 .srt）</span>
+                  )}
                 </p>
 
                 {sub.loading && <p className="muted">讀取中…</p>}
@@ -539,11 +570,11 @@ export default function PublishPage() {
                   </dl>
                 )}
 
-                {parsed?.warnings.length > 0 && (
+                {subWarnings.length > 0 && (
                   <details className="notice notice--warning">
-                    <summary>有 {parsed.warnings.length} 個格式問題（不影響發布，有問題的段落會略過）</summary>
+                    <summary>有 {subWarnings.length} 個格式問題（不影響發布，有問題的段落會略過）</summary>
                     <ul>
-                      {parsed.warnings.map((warning) => (
+                      {subWarnings.map((warning) => (
                         <li key={warning}>{warning}</li>
                       ))}
                     </ul>
@@ -647,6 +678,15 @@ export default function PublishPage() {
             </div>
           )}
           {youtubeId && !parsed && <p className="field__hint">選擇字幕檔後，字幕會疊在影片上。</p>}
+          <div className="publish-preview__actions">
+            <button type="button" className="btn btn--ghost" onClick={openPreview} disabled={!youtubeId}>
+              <ExternalLink size={16} aria-hidden="true" />
+              在新分頁預覽影片頁
+            </button>
+            <p className="field__hint">
+              用正式影片頁的版面預覽，只有這台電腦看得到。這一頁要保持開著，修改會自動同步過去。
+            </p>
+          </div>
         </section>
 
         {/* ---------- 發布 ---------- */}

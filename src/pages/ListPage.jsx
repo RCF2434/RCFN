@@ -67,8 +67,6 @@ export default function ListPage() {
   return (
     <div className="container">
       <section className="page-head">
-        <p className="eyebrow">非官方字幕</p>
-        <h1>にじさんじ</h1>
         <div className="field">
           <label htmlFor={inputId} className="field__label">
             搜尋影片
@@ -112,7 +110,7 @@ export default function ListPage() {
                   removeTag(selected.at(-1));
                 }
               }}
-              placeholder={selected.length ? '再輸入關鍵字或標籤' : '片名、說明或標籤'}
+              placeholder={'輸入關鍵字...'}
               autoComplete="off"
             />
             {(selected.length > 0 || query) && (
@@ -125,9 +123,7 @@ export default function ListPage() {
 
         {available.length > 0 && (
           <div className="tag-bar">
-            <p className="field__label">
-              {tagQuery ? '符合的標籤' : selected.length ? '再加入標籤（要同時符合）' : '依標籤篩選'}
-            </p>
+            <p className="field__label">依標籤篩選</p>
             <ul className="tags" aria-label="可加入的標籤">
               {available.map((tag) => (
                 <li key={tag}>

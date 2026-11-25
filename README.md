@@ -1,4 +1,4 @@
-# 非官方字幕
+# RCFN · 非官方字幕
 
 在 YouTube 嵌入影片上掛外部字幕，依說話人分色，觀眾可切換三種字幕樣式。純靜態網站（React + Vite），可直接部署到 GitHub Pages。視覺風格依照 `Luxury Neumorphic Estate.design.md`。
 
