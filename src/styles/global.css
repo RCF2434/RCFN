@@ -2691,7 +2691,11 @@ code.mono {
   background-position: left center, right center;
 }
 
-@media (max-width: 560px) {
+/*
+ * 手機的清單格式（與卡片格式一欄的斷點相同）：像 YouTube App 的列表，
+ * 不要卡片外框與撕線，縮圖約四成寬，標題最多兩行、說明一行、標籤排成一行。
+ */
+@media (max-width: 562px) {
   .view-toggle__label {
     position: absolute;
     width: 1px;
@@ -2700,21 +2704,93 @@ code.mono {
     clip-path: inset(50%);
   }
 
-  .video-card--row .video-card__thumb {
-    width: 38%;
+  .video-list {
+    gap: var(--space-md);
+  }
+
+  /* 卡片格式的標題也最多兩行 */
+  .video-card__title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .video-card--row {
+    --pad: 0px;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .video-card--row:hover,
+  .video-card--row:has(.video-card__link:active) {
+    box-shadow: none;
+    transform: none;
   }
 
   .video-card--row .ticket-tear {
-    margin-inline: 0.25rem;
+    display: none;
+  }
+
+  .video-card--row .video-card__thumb {
+    width: 42%;
+    border-radius: 8px;
+  }
+
+  .video-card--row .video-card__play {
+    right: 6px;
+    bottom: 6px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .video-card--row .video-card__play svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .video-card--row .video-card__body {
+    min-width: 0;
+    gap: 4px;
+    padding: 0;
   }
 
   .video-card--row .video-card__title {
-    font-size: 1rem;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: 15px;
+    line-height: 20px;
   }
 
   .video-card--row .video-card__desc {
-    -webkit-line-clamp: 2;
-    font-size: 0.8rem;
+    -webkit-line-clamp: 1;
+    font-size: 12px;
+    line-height: 17px;
+  }
+
+  /* 標籤排成一行，放不下的藏起來 */
+  .video-card--row .video-card__tags {
+    flex-wrap: nowrap;
+    gap: 4px;
+    margin-top: 2px;
+    overflow: hidden;
+  }
+
+  .video-card--row .video-card__tags li {
+    flex: none;
+  }
+
+  .video-card--row .video-card__tags .tag-chip {
+    min-height: 22px;
+    padding: 0 0.5rem;
+    font-size: 11px;
+    box-shadow: none;
+    background: rgba(139, 134, 128, 0.14);
   }
 }
 
