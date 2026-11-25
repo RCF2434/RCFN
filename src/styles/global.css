@@ -569,6 +569,16 @@ main {
   margin: 0.75rem 0 1.75rem;
 }
 
+.video-head__channel a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.video-head__channel a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .video-head h1 {
   font-size: clamp(1.8rem, 3.5vw, 2.4rem);
 }
@@ -576,9 +586,14 @@ main {
 .video-info {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  align-items: start;
+  align-items: stretch; /* 左右兩個區塊等高 */
   gap: var(--space-lg);
   margin-top: var(--space-xl);
+}
+
+/* 等高時內容靠上排列，多出來的高度留在下面 */
+.video-info > .panel {
+  align-content: start;
 }
 
 @media (max-width: 768px) {

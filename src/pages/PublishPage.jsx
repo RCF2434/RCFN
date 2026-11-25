@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router';
 import { ArrowLeft, ChevronDown, FileText, Send, Upload } from 'lucide-react';
 import { ID_RE, publicSiteUrl, publishVideo } from '../lib/publish.js';
-import { EMBED_BLOCKED, parseYouTubeId } from '../lib/youtube.js';
+import { EMBED_BLOCKED, fetchOEmbed, parseYouTubeId } from '../lib/youtube.js';
 import { parseSRT, formatTime } from '../lib/srt.js';
 import { resolveSpeakerColors, toSpeakerColor } from '../lib/speakers.js';
 import {
@@ -70,6 +70,18 @@ export default function PublishPage() {
   // 用預覽播放器檢查影片能不能嵌入：不允許嵌入、私人或已刪除時 YouTube 會回報錯誤代碼
   const [playerCheck, setPlayerCheck] = useState({ id: null, ready: false, errorCode: null });
   const onPlayerStatus = useCallback((status) => setPlayerCheck({ id: youtubeId, ...status }), [youtubeId]);
+
+  // 影片上傳者的頻道（oEmbed）：影片頁標題上方會顯示
+  const [oembed, setOembed] = useState({ id: null, uploader: null });
+  useEffect(() => {
+    if (!youtubeId) return undefined;
+    const controller = new AbortController();
+    fetchOEmbed(youtubeId, controller.signal)
+      .then(({ uploader }) => setOembed({ id: youtubeId, uploader }))
+      .catch((err) => err.name !== 'AbortError' && setOembed({ id: youtubeId, uploader: null }));
+    return () => controller.abort();
+  }, [youtubeId]);
+  const uploader = oembed.id === youtubeId ? oembed.uploader : null;
   const embedCode = playerCheck.id === youtubeId ? playerCheck.errorCode : null;
   const embedProblem =
     embedCode == null
@@ -238,6 +250,8 @@ export default function PublishPage() {
       channel: undefined, // 舊格式，一律改存 channels
       notes: savedNotes.length ? savedNotes : undefined,
       chat: chat.mode === 'keep' ? chat.path : chat.mode === 'new' ? chatPath : undefined,
+      // 查不到時（例如網路問題）沿用原本存的
+      uploader: uploader ?? (existing?.youtubeId === youtubeId ? existing?.uploader : undefined),
     };
     setJob({ phase: 'committing', id });
     try {
@@ -350,6 +364,7 @@ export default function PublishPage() {
                   embedProblem ?? (
                     <>
                       影片 ID：<span className="mono">{youtubeId}</span>
+                      {uploader && ` · 頻道：${uploader.name}`}
                       {playerCheck.id === youtubeId && playerCheck.ready ? '' : ' · 檢查能否嵌入播放中…'}
                     </>
                   )

@@ -45,6 +45,21 @@ export const BUFFERING = 3;
 const ID_RE = /^[\w-]{11}$/;
 
 /**
+ * YouTube oEmbed：不需要 API 金鑰，可以從瀏覽器直接呼叫（有 CORS）。
+ * 回傳 { title, uploader: { name, url } }；影片不存在或不允許嵌入時丟出錯誤。
+ */
+export async function fetchOEmbed(youtubeId, signal) {
+  const url = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${youtubeId}`)}`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`oEmbed HTTP ${response.status}`);
+  const data = await response.json();
+  return {
+    title: data.title ?? '',
+    uploader: data.author_name ? { name: data.author_name, url: data.author_url ?? null } : null,
+  };
+}
+
+/**
  * 從各種 YouTube 網址取出影片 ID：watch?v=、youtu.be/、shorts/、embed/、live/，
  * 或直接貼 11 字元的 ID。辨識不出來回傳 null。
  */

@@ -4,7 +4,6 @@ import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { assetUrl, findVideo, subtitleUrl, videoChannels, watchUrl } from '../lib/videos.js';
 import { useChat } from '../hooks/useChat.js';
 import { resolveSpeakerColors } from '../lib/speakers.js';
-import { formatTime } from '../lib/srt.js';
 import { useSubtitles } from '../hooks/useSubtitles.js';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 import SubtitlePlayer from '../components/SubtitlePlayer.jsx';
@@ -12,7 +11,6 @@ import TagList from '../components/TagList.jsx';
 import ChannelBadge from '../components/ChannelBadge.jsx';
 import NotesList from '../components/NotesList.jsx';
 import { jumpTime, numberNotes } from '../lib/notes.js';
-import TicketTear from '../components/TicketTear.jsx';
 import NotFound from './NotFound.jsx';
 import { textLang } from '../lib/lang.js';
 
@@ -32,9 +30,7 @@ export default function VideoPage() {
 
   if (!video) return <NotFound message="找不到這支影片，可能是網址有誤或影片已下架。" />;
 
-  const fileName = video.subtitle.split('/').pop();
   const channels = videoChannels(video);
-  const duration = subs.cues.at(-1)?.end;
 
   return (
     <div className="container video-page">
@@ -44,7 +40,19 @@ export default function VideoPage() {
       </Link>
 
       <header className="video-head">
-        <p className="eyebrow">Now Showing</p>
+        {video.uploader?.name ? (
+          <p className="eyebrow video-head__channel">
+            {video.uploader.url ? (
+              <a href={video.uploader.url} target="_blank" rel="noreferrer" lang={textLang(video.uploader.name)}>
+                {video.uploader.name}
+              </a>
+            ) : (
+              <span lang={textLang(video.uploader.name)}>{video.uploader.name}</span>
+            )}
+          </p>
+        ) : (
+          <p className="eyebrow">Now Showing</p>
+        )}
         <h1 lang={textLang(video.title)}>{video.title}</h1>
       </header>
 
@@ -95,33 +103,7 @@ export default function VideoPage() {
             </p>
           )}
 
-          <TicketTear />
 
-          <dl className="meta">
-            <div>
-              <dt>字幕檔</dt>
-              <dd className="mono">{fileName}</dd>
-            </div>
-            <div>
-              <dt>句數</dt>
-              <dd className="mono">{subs.cues.length}</dd>
-            </div>
-            <div>
-              <dt>字幕長度</dt>
-              <dd className="mono">{formatTime(duration)}</dd>
-            </div>
-          </dl>
-
-          {subs.warnings.length > 0 && (
-            <details className="notice notice--warning">
-              <summary>字幕檔有 {subs.warnings.length} 個格式問題</summary>
-              <ul>
-                {subs.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </details>
-          )}
         </section>
       </div>
 

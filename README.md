@@ -91,6 +91,7 @@ npm run build      # 會先自動執行 check:subs
 | `tags` | 否 | 標籤，字串陣列。顯示在影片頁，列表頁可以依標籤篩選 |
 | `speakers` | 否 | 說話人顏色，見下方。名稱要和字幕裡的 `<v 名字>` 完全一致 |
 | `thumbnail` | 否 | 自訂縮圖網址，預設用 YouTube 縮圖 |
+| `uploader` | 否 | 影片上傳者的頻道 `{ "name", "url" }`，顯示在影片頁標題上方。發布頁會用 YouTube oEmbed 自動帶入（不需要 API 金鑰）；沒有時顯示「Now Showing」 |
 | `chat` | 否 | 聊天室重播檔案路徑（相對於 `public/`），例如 `chats/my-video.json`。建議用發布頁上傳 yt-dlp 的聊天紀錄自動產生 |
 | `notes` | 否 | 註釋：`[{ "time": 83.5, "text": "註釋內容" }]`，time 是秒數。依時間排序編號；字幕播到該時間時標示（*編號），影片頁下方列出註釋，點編號跳到該時間 |
 | `channels` | 否 | 顯示在影片頁的頻道，可以多個：`[{ "name", "url", "handle", "avatar" }]`。建議用發布頁自動產生（舊格式的單一 `channel` 也讀得到） |
