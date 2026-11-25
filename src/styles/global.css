@@ -1064,7 +1064,10 @@ main {
   .player-chat {
     height: 320px;
   }
+}
 
+/* 窄螢幕的全螢幕：直向時聊天室在影片下方 */
+@media (max-width: 860px) and (orientation: portrait) {
   .player-shell.is-fs .player-body.has-chat {
     grid-template-rows: minmax(0, 1fr) 38%;
   }
@@ -1073,6 +1076,17 @@ main {
     height: auto;
     border-left: 0;
     border-top: 1px solid var(--sh-light);
+  }
+}
+
+/* 窄螢幕的全螢幕：橫向（手機橫拿）時聊天室在右側，寬度依螢幕縮放 */
+@media (max-width: 860px) and (orientation: landscape) {
+  .player-shell.is-fs .player-body.has-chat {
+    grid-template-columns: minmax(0, 1fr) clamp(200px, 32%, var(--chat-width));
+  }
+
+  .player-shell.is-fs .player-chat {
+    height: auto;
   }
 }
 
