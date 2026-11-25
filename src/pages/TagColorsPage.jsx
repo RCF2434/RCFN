@@ -16,7 +16,8 @@ import PublishStatus from '../components/publish/PublishStatus.jsx';
 import TicketTear from '../components/TicketTear.jsx';
 
 const DEFAULT_OPTION = { key: '', label: '預設', light: 'var(--text)', deep: 'var(--text)' };
-const OPTIONS = [DEFAULT_OPTION, ...PALETTE];
+// 米白等同「預設」，標籤不提供
+const OPTIONS = [DEFAULT_OPTION, ...PALETTE.filter((p) => !p.speakerOnly)];
 const CUSTOM = 'custom';
 const SEARCH_THRESHOLD = 12;
 

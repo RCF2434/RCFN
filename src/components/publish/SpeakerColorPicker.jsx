@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { PALETTE, speakerVars, toSpeakerColor } from '../../lib/speakers.js';
+import { PALETTE, speakerVars, swatchVars, toSpeakerColor } from '../../lib/speakers.js';
 import { SUBTITLE_BACKGROUNDS } from '../../lib/contrast.js';
 import HexField from './HexField.jsx';
 
@@ -27,7 +27,7 @@ export default function SpeakerColorPicker({ name, value, custom, onChange }) {
 
   return (
     <fieldset className="speaker-picker">
-      <legend className="speaker-chip" style={speakerVars(current)}>
+      <legend className="speaker-chip" style={swatchVars(current)}>
         <span className="speaker-chip__dot" aria-hidden="true" />
         {name}
       </legend>
@@ -41,7 +41,7 @@ export default function SpeakerColorPicker({ name, value, custom, onChange }) {
               onChange={() => onChange(option.key)}
               aria-label={`${name}：${option.label}`}
             />
-            <span className="swatch__dot" style={speakerVars(option)} aria-hidden="true" />
+            <span className="swatch__dot" style={swatchVars(option)} aria-hidden="true" />
           </label>
         ))}
         <label className="swatch swatch--custom" title="自訂顏色">

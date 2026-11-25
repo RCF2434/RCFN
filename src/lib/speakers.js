@@ -6,6 +6,15 @@
  * - deep ：用在白底上當文字（白框彩字），或當底色配白字（彩框白字）
  * 以下每組在三種字幕樣式下的 WCAG 對比皆 ≥ 6:1。
  */
+
+/** 沒有標記說話人的字幕行 */
+export const NEUTRAL = { key: 'neutral', light: '#F5F0E8', deep: '#333333' };
+
+/**
+ * 調色盤。米白（ivory）與無說話人的預設色相同，可以手動指定給說話人，但：
+ * - auto: false：自動配色不會分到它（否則看起來像沒標記說話人）
+ * - speakerOnly：標籤顏色不提供（等同標籤的「預設」）
+ */
 export const PALETTE = [
   { key: 'gold', label: '金', light: '#E8CB74', deep: '#7A5F14' },
   { key: 'blue', label: '藍', light: '#9EC5F0', deep: '#2F5B8C' },
@@ -14,10 +23,15 @@ export const PALETTE = [
   { key: 'violet', label: '紫', light: '#CDB8EE', deep: '#63458A' },
   { key: 'teal', label: '青', light: '#8ED8D0', deep: '#256660' },
   { key: 'orange', label: '橘', light: '#F5BA6E', deep: '#8A5210' },
+  { key: 'ivory', label: '米白', light: NEUTRAL.light, deep: NEUTRAL.deep, auto: false, speakerOnly: true },
 ];
 
-/** 沒有標記說話人的字幕行 */
-export const NEUTRAL = { key: 'neutral', light: '#F5F0E8', deep: '#333333' };
+/** 色塊、名牌上的小圓點：米白的深色階是深灰，照原樣會畫成深色點，這裡改成米白在中間、深灰外圈 */
+export function swatchVars(color) {
+  return color?.key === 'ivory'
+    ? { '--spk-light': color.deep, '--spk-deep': color.light }
+    : speakerVars(color);
+}
 
 export const PALETTE_KEYS = PALETTE.map((p) => p.key);
 const BY_KEY = Object.fromEntries(PALETTE.map((p) => [p.key, p]));
@@ -48,8 +62,9 @@ export function resolveSpeakerColors(speakers, config) {
     colors.set(name, color);
     if (color.key) taken.add(color.key);
   }
-  const free = PALETTE.filter((p) => !taken.has(p.key));
-  const pool = free.length ? free : PALETTE;
+  const autoColors = PALETTE.filter((p) => p.auto !== false);
+  const free = autoColors.filter((p) => !taken.has(p.key));
+  const pool = free.length ? free : autoColors;
   let next = 0;
   for (const name of speakers) {
     if (!colors.has(name)) colors.set(name, pool[next++ % pool.length]);
