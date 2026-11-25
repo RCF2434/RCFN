@@ -927,6 +927,29 @@ main {
   white-space: pre-line;
 }
 
+/* ===== 可收合區塊（Collapsible）：過長先收起，下方淡出 ===== */
+.collapsible {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-xs);
+  max-width: 100%;
+}
+
+.collapsible__content {
+  max-width: 100%;
+}
+
+.collapsible.is-collapsed .collapsible__content {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+
+.collapsible__toggle {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 /* 說明裡 [文字](連結) 轉成的超連結 */
 .inline-link {
   color: var(--accent-text);
@@ -2803,6 +2826,54 @@ code.mono {
 .video-notes {
   justify-items: stretch;
   margin-top: var(--space-xl);
+}
+
+/* 區塊之間的撕線：桌機不顯示（區塊各有外框），手機版才出現 */
+.video-divider {
+  display: none;
+}
+
+/*
+ * 手機的影片頁（與列表相同斷點）：播放器與 About／Tags／Notes 不要外框，
+ * 內容直接排在頁面上，區塊之間用撕線分開。聊天室是可捲動的區塊，保留邊界；全螢幕不受影響。
+ */
+@media (max-width: 562px) {
+  .video-divider {
+    display: block;
+    margin-block: var(--space-sm);
+  }
+
+  .video-page .video-info,
+  .video-page .video-notes {
+    margin-top: 0;
+  }
+  .video-page .player-shell:not(.is-fs) {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .video-page .panel {
+    --tear-inset: 0px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .video-page .video-info {
+    gap: 0;
+  }
+
+  /* 標籤與頻道之間不加撕線（其他區塊之間才有），改用間距 */
+  .video-page .panel--ticket > .ticket-tear {
+    display: none;
+  }
+
+  .video-page .video-channel {
+    margin-top: var(--space-md);
+  }
 }
 
 .notes {

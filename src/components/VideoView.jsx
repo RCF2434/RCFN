@@ -9,6 +9,20 @@ import ChannelBadge from './ChannelBadge.jsx';
 import NotesList from './NotesList.jsx';
 import TicketTear from './TicketTear.jsx';
 import LinkedText from './LinkedText.jsx';
+import Collapsible from './Collapsible.jsx';
+
+// 說明、註釋過長時先收合的高度（px）：說明約 8 行
+const ABOUT_COLLAPSED = 200;
+const NOTES_COLLAPSED = 300;
+
+/** 區塊之間的撕線：只在手機版顯示（桌機的區塊各有外框，見 .video-divider） */
+function SectionDivider() {
+  return (
+    <div className="video-divider">
+      <TicketTear />
+    </div>
+  );
+}
 import { getList, listLink, videoListKey } from '../lib/lists.js';
 import { jumpTime, numberNotes } from '../lib/notes.js';
 import { textLang } from '../lib/lang.js';
@@ -67,15 +81,18 @@ export default function VideoView({ video, subs, chat, banner }) {
         chat={video.chat ? chat : undefined}
       />
 
+      <SectionDivider />
       <div className="video-info">
         <section className="panel" aria-labelledby="about-title">
           <p id="about-title" className="eyebrow">
             About
           </p>
           {video.description ? (
-            <p className="panel__text video-desc" lang={textLang(video.description)}>
-              <LinkedText text={video.description} />
-            </p>
+            <Collapsible collapsedHeight={ABOUT_COLLAPSED}>
+              <p className="panel__text video-desc" lang={textLang(video.description)}>
+                <LinkedText text={video.description} />
+              </p>
+            </Collapsible>
           ) : (
             <p className="muted">沒有說明。</p>
           )}
@@ -85,6 +102,7 @@ export default function VideoView({ video, subs, chat, banner }) {
           </a>
         </section>
 
+        <SectionDivider />
         <section className="panel panel--ticket" aria-labelledby="tags-title">
           <p id="tags-title" className="eyebrow">
             Tags
@@ -111,10 +129,13 @@ export default function VideoView({ video, subs, chat, banner }) {
         </section>
       </div>
 
+      {notes.length > 0 && <SectionDivider />}
       {notes.length > 0 && (
         <section className="panel video-notes" aria-labelledby="notes-title">
           <p className="eyebrow">Notes</p>
-          <NotesList notes={notes} onJump={(note) => playerRef.current?.seekTo(note.jumpTo)} />
+          <Collapsible collapsedHeight={NOTES_COLLAPSED}>
+            <NotesList notes={notes} onJump={(note) => playerRef.current?.seekTo(note.jumpTo)} />
+          </Collapsible>
         </section>
       )}
     </div>
