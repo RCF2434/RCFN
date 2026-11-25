@@ -1,1 +1,10 @@
-{}
+{
+  "山田龍一郎": {
+    "light": "#82ACC8",
+    "deep": "#286F9F"
+  },
+  "Shu Yamino": {
+    "light": "#BF77C0",
+    "deep": "#9E4BA0"
+  }
+}
