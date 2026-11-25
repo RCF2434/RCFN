@@ -39,6 +39,7 @@
     ],
     "speakers": {
       "導覽": "violet"
-    }
+    },
+    "chat": "chats/sintel.json"
   }
 ]

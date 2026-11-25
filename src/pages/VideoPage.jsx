@@ -1,7 +1,8 @@
 import { useMemo, useRef } from 'react';
 import { Link, useParams } from 'react-router';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
-import { findVideo, subtitleUrl, videoChannels, watchUrl } from '../lib/videos.js';
+import { assetUrl, findVideo, subtitleUrl, videoChannels, watchUrl } from '../lib/videos.js';
+import { useChat } from '../hooks/useChat.js';
 import { resolveSpeakerColors } from '../lib/speakers.js';
 import { formatTime } from '../lib/srt.js';
 import { useSubtitles } from '../hooks/useSubtitles.js';
@@ -19,6 +20,7 @@ export default function VideoPage() {
   const { id } = useParams();
   const video = findVideo(id);
   const subs = useSubtitles(video ? subtitleUrl(video) : null);
+  const chat = useChat(video?.chat ? assetUrl(video.chat) : null);
   const colors = useMemo(() => resolveSpeakerColors(subs.speakers, video?.speakers), [subs.speakers, video]);
   // jumpTo：點編號時跳到的時間（那句字幕的開頭）
   const notes = useMemo(
@@ -46,7 +48,14 @@ export default function VideoPage() {
         <h1 lang={textLang(video.title)}>{video.title}</h1>
       </header>
 
-      <SubtitlePlayer ref={playerRef} youtubeId={video.youtubeId} cues={subs.cues} colors={colors} notes={notes} />
+      <SubtitlePlayer
+        ref={playerRef}
+        youtubeId={video.youtubeId}
+        cues={subs.cues}
+        colors={colors}
+        notes={notes}
+        chat={video.chat ? chat : undefined}
+      />
 
       <div className="video-info">
         <section className="panel" aria-labelledby="about-title">

@@ -2,6 +2,7 @@ import { useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { Maximize, Minimize } from 'lucide-react';
 import { useYouTubePlayer } from '../hooks/useYouTubePlayer.js';
 import { useActiveCues } from '../hooks/useActiveCues.js';
+import { usePlaybackTime } from '../hooks/usePlaybackTime.js';
 import { useFullscreen } from '../hooks/useFullscreen.js';
 import { useStoredState } from '../hooks/useStoredState.js';
 import { PALETTE } from '../lib/speakers.js';
@@ -10,6 +11,8 @@ import { noteMarkers } from '../lib/notes.js';
 import SubtitleOverlay from './SubtitleOverlay.jsx';
 import StyleSwitcher, { SUB_STYLE_KEYS } from './StyleSwitcher.jsx';
 import SizeSlider, { DEFAULT_SUB_SIZE, SUB_SIZES, isSubSize } from './SizeSlider.jsx';
+import ChatPanel from './ChatPanel.jsx';
+import Toggle from './Toggle.jsx';
 
 const NO_NOTES = [];
 
@@ -17,8 +20,9 @@ const NO_NOTES = [];
  * onStatus：播放器載入或出錯時回報 { ready, errorCode }，發布頁用來檢查影片能不能嵌入
  * notes：numberNotes() 整理過的註釋，字幕上會標示（*編號）
  * ref：{ seekTo(秒數), getCurrentTime() }，給註釋連結跳時間、發布頁取目前時間
+ * chat：useChat() 的結果；有給才會出現聊天室與工具列的開關
  */
-export default function SubtitlePlayer({ youtubeId, cues, colors, onStatus, notes = NO_NOTES, ref }) {
+export default function SubtitlePlayer({ youtubeId, cues, colors, onStatus, notes = NO_NOTES, chat, ref }) {
   const shellRef = useRef(null);
   const { hostRef, playerRef, ready, error, errorCode, playerState } = useYouTubePlayer(youtubeId);
   const markers = useMemo(() => noteMarkers(cues, notes), [cues, notes]);
@@ -56,6 +60,12 @@ export default function SubtitlePlayer({ youtubeId, cues, colors, onStatus, note
   const playing = playerState === PLAYING || playerState === BUFFERING;
   const sample = colors.values().next().value ?? PALETTE[0];
 
+  // 聊天室重播：放在影片右邊（窄螢幕在下方），工具列可開關，偏好記在瀏覽器
+  const hasChat = Boolean(chat) && chat.status !== 'idle';
+  const [chatOpen, setChatOpen] = useStoredState('chat-open', true, (v) => typeof v === 'boolean');
+  const showChat = hasChat && chatOpen;
+  const chatTime = usePlaybackTime(playerRef, ready && showChat);
+
   const shellClass = [
     'player-shell',
     fullscreen.active && 'is-fs scheme-dark',
@@ -66,6 +76,7 @@ export default function SubtitlePlayer({ youtubeId, cues, colors, onStatus, note
 
   return (
     <div ref={shellRef} className={shellClass} data-playing={playing || undefined}>
+      <div className={`player-body${showChat ? ' has-chat' : ''}`}>
       <div className="stage">
         <div className="stage__video" ref={hostRef} />
         {!ready && !error && <div className="stage__status">播放器載入中…</div>}
@@ -82,10 +93,21 @@ export default function SubtitlePlayer({ youtubeId, cues, colors, onStatus, note
           markers={markers}
         />
       </div>
+      {showChat && (
+        <div className="player-chat">
+          <ChatPanel chat={chat} time={chatTime} onClose={() => setChatOpen(false)} />
+        </div>
+      )}
+      </div>
 
       <div className="player-toolbar">
         <StyleSwitcher value={subStyle} onChange={setSubStyle} sample={sample} />
         <SizeSlider value={subSize} onChange={setSubSize} />
+        {hasChat && (
+          <Toggle checked={chatOpen} onChange={setChatOpen}>
+            聊天室
+          </Toggle>
+        )}
         <button
           type="button"
           className="btn btn--icon player-toolbar__end"

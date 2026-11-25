@@ -26,7 +26,7 @@ export function serializeVideos(videos) {
  * 把字幕檔與 videos.json 寫進同一個 commit。
  * 每次都從分支最新的 videos.json 重新套用，分支在途中被更新時自動重試。
  */
-export async function publishVideo(gh, { branch, entry, subtitleText, mode }) {
+export async function publishVideo(gh, { branch, entry, subtitleText, mode, extraFiles = [] }) {
   const verb = mode === 'create' ? '新增' : '更新';
   for (let attempt = 1; ; attempt += 1) {
     const head = await gh.getHead(branch);
@@ -39,6 +39,7 @@ export async function publishVideo(gh, { branch, entry, subtitleText, mode }) {
         files: [
           { path: `public/${entry.subtitle}`, content: subtitleText },
           { path: VIDEOS_PATH, content: serializeVideos(videos) },
+          ...extraFiles,
         ],
       });
       return { commitSha, videos };

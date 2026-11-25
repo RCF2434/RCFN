@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseSRT } from '../src/lib/srt.js';
+import { readChatData } from '../src/lib/chat.js';
 import { PALETTE_KEYS, resolveSpeakerColors, toSpeakerColor } from '../src/lib/speakers.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,6 +64,15 @@ for (const video of videos) {
         if (!n || !Number.isFinite(n.time) || n.time < 0) warn(`第 ${i + 1} 則註釋的 time 應該是秒數（數字）`);
         if (!n || typeof n.text !== 'string' || !n.text.trim()) warn(`第 ${i + 1} 則註釋沒有內容`);
       });
+  }
+
+  if (video.chat !== undefined) {
+    try {
+      const chat = readChatData(JSON.parse(await readFile(path.join(root, 'public', video.chat), 'utf8')));
+      console.log(`  聊天室重播：${chat.messages.length.toLocaleString()} 則訊息`);
+    } catch (err) {
+      error(err.code === 'ENOENT' ? `找不到聊天室紀錄 public/${video.chat}` : `聊天室紀錄 public/${video.chat} 讀取失敗：${err.message}`);
+    }
   }
 
   if (!video.subtitle) continue;

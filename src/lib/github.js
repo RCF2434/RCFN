@@ -6,6 +6,7 @@ const API = 'https://api.github.com';
 export const VIDEOS_PATH = 'src/data/videos.json';
 export const TAGS_PATH = 'src/data/tags.json';
 export const WORKFLOW_PATH = '.github/workflows/deploy.yml';
+const LARGE_FILE_CHARS = 512 * 1024;
 
 export class GitHubError extends Error {
   constructor(message, status = 0, { stale = false } = {}) {
@@ -109,14 +110,26 @@ export function createGitHub({ owner, repo, token }) {
     }
   }
 
-  /** 把多個文字檔寫進同一個 commit，部署只會觸發一次 */
+  /**
+   * 把多個文字檔寫進同一個 commit，部署只會觸發一次。
+   * files：[{ path, content }]，或 { path, delete: true } 刪除檔案。
+   * 大檔案（例如聊天室紀錄）先用 blob API 上傳，避免 tree 請求太大。
+   */
   async function commitFiles({ branch, head, files, message }) {
+    const entries = [];
+    for (const file of files) {
+      if (file.delete) {
+        entries.push({ path: file.path, mode: '100644', type: 'blob', sha: null });
+      } else if (file.content.length > LARGE_FILE_CHARS) {
+        const blob = await request('/git/blobs', { method: 'POST', body: { content: file.content, encoding: 'utf-8' } });
+        entries.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
+      } else {
+        entries.push({ path: file.path, mode: '100644', type: 'blob', content: file.content });
+      }
+    }
     const tree = await request('/git/trees', {
       method: 'POST',
-      body: {
-        base_tree: head.treeSha,
-        tree: files.map((file) => ({ path: file.path, mode: '100644', type: 'blob', content: file.content })),
-      },
+      body: { base_tree: head.treeSha, tree: entries },
     });
     const commit = await request('/git/commits', {
       method: 'POST',

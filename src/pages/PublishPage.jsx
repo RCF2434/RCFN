@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, ChevronDown, FileText, Send, Upload } from 'lucide-react';
 import { ID_RE, publicSiteUrl, publishVideo } from '../lib/publish.js';
@@ -25,6 +25,8 @@ import ChannelField, { channelProblems, channelRows } from '../components/publis
 import NotesEditor, { noteRows, notesProblems, rowsToNotes } from '../components/publish/NotesEditor.jsx';
 import { numberNotes } from '../lib/notes.js';
 import { removeNotesDraft } from '../lib/notesDraft.js';
+import ChatField, { NO_CHAT, chatState } from '../components/publish/ChatField.jsx';
+import { readChatData } from '../lib/chat.js';
 import { collectTags } from '../lib/tags.js';
 import { videoChannels, videos as bundledVideos } from '../lib/videos.js';
 
@@ -52,6 +54,8 @@ export default function PublishPage() {
   const [tags, setTags] = useState(EMPTY);
   const [channels, setChannels] = useState(EMPTY);
   const [notes, setNotes] = useState(EMPTY);
+  const [chat, setChat] = useState(NO_CHAT);
+  const [keptChat, setKeptChat] = useState(null); // repo 裡已有的聊天室紀錄（給預覽用）
   const previewRef = useRef(null);
   const [job, setJob] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -92,6 +96,7 @@ export default function PublishPage() {
       setTags(EMPTY);
       setChannels(EMPTY);
       setNotes(EMPTY);
+      setChat(NO_CHAT);
       return;
     }
     setForm({
@@ -104,6 +109,7 @@ export default function PublishPage() {
     setTags(Array.isArray(entry.tags) ? entry.tags : EMPTY);
     setChannels(channelRows(videoChannels(entry)));
     setNotes(noteRows(entry.notes));
+    setChat(chatState(entry.chat));
     const name = entry.subtitle.split('/').pop();
     setSub({ name, source: 'repo', loading: true });
     try {
@@ -164,6 +170,36 @@ export default function PublishPage() {
   const savedNotes = useMemo(() => rowsToNotes(notes), [notes]);
   const previewNotes = useMemo(() => numberNotes(savedNotes), [savedNotes]);
 
+  // 聊天室紀錄：沿用原本的路徑，沒有就用 chats/<id>.json
+  const chatPath = chat.path ?? `chats/${id}.json`;
+  const chatFiles =
+    chat.mode === 'new'
+      ? [{ path: `public/${chatPath}`, content: chat.json }]
+      : chat.mode === 'remove'
+        ? [{ path: `public/${chat.path}`, delete: true }]
+        : [];
+
+  // repo 裡已有的聊天室紀錄：讀進來給預覽用
+  useEffect(() => {
+    if (chat.mode !== 'keep' || !conn.gh || keptChat?.path === chat.path) return undefined;
+    let cancelled = false;
+    setKeptChat({ path: chat.path, status: 'loading', messages: [], error: null });
+    conn.gh
+      .readText(`public/${chat.path}`, conn.headSha)
+      .then((text) => !cancelled && setKeptChat({ path: chat.path, status: 'ready', error: null, ...readChatData(JSON.parse(text)) }))
+      .catch((err) => !cancelled && setKeptChat({ path: chat.path, status: 'error', messages: [], error: err.message }));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat.mode, chat.path, conn.gh]);
+
+  const newChat = useMemo(
+    () => (chat.mode === 'new' ? { status: 'ready', error: null, ...readChatData(chat.data) } : null),
+    [chat.mode, chat.data],
+  );
+  const previewChat = chat.mode === 'new' ? newChat : chat.mode === 'keep' && keptChat?.path === chat.path ? keptChat : undefined;
+
   /* ---------- 檢查 ---------- */
   const problems = [];
   if (!youtubeId) problems.push(form.url.trim() ? '無法從網址辨識出 YouTube 影片' : '填入 YouTube 網址');
@@ -201,6 +237,7 @@ export default function PublishPage() {
         : undefined,
       channel: undefined, // 舊格式，一律改存 channels
       notes: savedNotes.length ? savedNotes : undefined,
+      chat: chat.mode === 'keep' ? chat.path : chat.mode === 'new' ? chatPath : undefined,
     };
     setJob({ phase: 'committing', id });
     try {
@@ -208,10 +245,17 @@ export default function PublishPage() {
         branch: settings.branch,
         entry,
         subtitleText: normalizeSubtitle(decoded.text),
+        extraFiles: chatFiles,
         mode,
       });
       setConn((c) => ({ ...c, videos: result.videos, headSha: result.commitSha }));
       removeNotesDraft(youtubeId); // 已經發布，草稿用不到了
+      if (chat.mode === 'new') {
+        setKeptChat({ path: chatPath, status: 'ready', error: null, ...readChatData(chat.data) });
+        setChat({ mode: 'keep', path: chatPath });
+      } else if (chat.mode === 'remove') {
+        setChat(NO_CHAT);
+      }
       // 之後再改就是更新這支影片
       setTarget(id);
       setJob({ phase: 'deploying', id, commitSha: result.commitSha, startedAt: Date.now() });
@@ -553,6 +597,18 @@ export default function PublishPage() {
               video={{ id, youtubeId, title: form.title.trim() }}
             />
           </section>
+
+          {/* ---------- 聊天室重播 ---------- */}
+          <section className="panel" aria-labelledby={`${uid}-chat`}>
+            <div>
+              <p className="eyebrow">Step 6 · Chat replay</p>
+              <h2 id={`${uid}-chat`} className="panel__title">
+                聊天室重播（選填）
+              </h2>
+            </div>
+            <p className="panel__text muted">直播錄檔可以附上聊天紀錄，影片頁會在播放器右邊依時間重播聊天室。</p>
+            <ChatField value={chat} onChange={setChat} youtubeId={youtubeId} disabled={busy} />
+          </section>
         </div>
 
         {/* ---------- 預覽 ---------- */}
@@ -567,6 +623,7 @@ export default function PublishPage() {
               cues={parsed?.cues ?? EMPTY}
               colors={colors}
               notes={previewNotes}
+              chat={previewChat}
               onStatus={onPlayerStatus}
             />
           ) : (
@@ -579,7 +636,7 @@ export default function PublishPage() {
 
         {/* ---------- 發布 ---------- */}
         <section className="panel panel--ticket publish-submit" aria-labelledby={`${uid}-publish`}>
-          <p className="eyebrow">Step 6 · Admit One</p>
+          <p className="eyebrow">Step 7 · Admit One</p>
           <h2 id={`${uid}-publish`} className="panel__title">
             {mode === 'create' ? '發布' : '更新'}
           </h2>

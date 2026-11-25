@@ -8,7 +8,12 @@ export function findVideo(id) {
 
 /** BASE_URL 為 './'，字幕檔放在 public/ 底下即可 */
 export function subtitleUrl(video) {
-  return `${import.meta.env.BASE_URL}${video.subtitle.replace(/^\/+/, '')}`;
+  return assetUrl(video.subtitle);
+}
+
+/** public/ 底下檔案的網址 */
+export function assetUrl(path) {
+  return `${import.meta.env.BASE_URL}${String(path).replace(/^\/+/, '')}`;
 }
 
 /** 影片的頻道清單；相容舊格式的單一 channel 欄位 */
