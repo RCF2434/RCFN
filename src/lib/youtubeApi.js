@@ -35,28 +35,28 @@ export function parseChannelInput(input) {
   try {
     url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
   } catch {
-    return { error: '看不懂這個連結' };
+    return { error: '無法辨識此連結' };
   }
   const host = url.hostname.toLowerCase().replace(/^(www|m)\./, '');
-  if (host !== 'youtube.com') return { error: '請貼 YouTube 頻道的連結' };
+  if (host !== 'youtube.com') return { error: '請貼上 YouTube 頻道的連結' };
   const [first, second] = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
   if (first?.startsWith('@')) return { handle: first };
   if (first === 'channel' && /^UC[\w-]{22}$/.test(second ?? '')) return { id: second };
   if (first === 'user' && second) return { username: second };
-  if (first === 'c') return { error: '舊式的 /c/ 網址查不到，請改貼頻道的 @帳號 網址' };
-  if (first === 'watch' || url.searchParams.has('v')) return { error: '這是影片連結，請貼頻道的連結' };
-  return { error: '請貼頻道首頁的連結，例如 https://www.youtube.com/@帳號' };
+  if (first === 'c') return { error: '舊式的 /c/ 網址無法查詢，請改用頻道的 @帳號 網址' };
+  if (first === 'watch' || url.searchParams.has('v')) return { error: '此為影片連結，請貼上頻道的連結' };
+  return { error: '請貼上頻道首頁的連結，例如 https://www.youtube.com/@帳號' };
 }
 
 function describeError(status, body) {
   const text = JSON.stringify(body ?? {});
-  if (/API_KEY_INVALID|keyInvalid|API key not valid/i.test(text)) return 'API 金鑰無效，請確認有沒有貼錯。';
-  if (/quotaExceeded|RATE_LIMIT/i.test(text)) return '今天的 API 額度用完了，明天再試。';
+  if (/API_KEY_INVALID|keyInvalid|API key not valid/i.test(text)) return 'API 金鑰無效，請確認金鑰是否正確。';
+  if (/quotaExceeded|RATE_LIMIT/i.test(text)) return '今日 API 額度已用完，請於明日再試。';
   if (/REFERRER|ipRefererBlocked|referer/i.test(text)) {
-    return '金鑰限制了網站來源，請在 Google Cloud 把 http://localhost:5173/* 加進允許的網站。';
+    return '金鑰限制了網站來源，請於 Google Cloud 將 http://localhost:5173/*（依實際埠號）加入允許的網站。';
   }
   if (/accessNotConfigured|SERVICE_DISABLED|has not been used|disabled/i.test(text)) {
-    return '這組金鑰的專案還沒啟用 YouTube Data API v3。';
+    return '此金鑰所屬的專案尚未啟用 YouTube Data API v3。';
   }
   return `YouTube API 回應錯誤（HTTP ${status}）`;
 }

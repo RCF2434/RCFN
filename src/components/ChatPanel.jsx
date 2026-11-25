@@ -101,7 +101,7 @@ export default function ChatPanel({ chat, time, onClose }) {
           聊天室載入失敗（{chat.error}）
         </p>
       )}
-      {chat.status === 'ready' && visible.length === 0 && <p className="chat-panel__status">還沒有人留言。</p>}
+      {chat.status === 'ready' && visible.length === 0 && <p className="chat-panel__status">目前沒有留言。</p>}
 
       <ol ref={listRef} className="chat-panel__list" onScroll={onScroll}>
         {visible.map((message) => (

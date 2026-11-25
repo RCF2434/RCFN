@@ -31,7 +31,7 @@ export default function PreviewPage() {
     return (
       <div className="container video-page">
         <p className="notice notice--warning" role="status">
-          沒有可以預覽的草稿。請在發布頁按「在新分頁預覽影片頁」開啟這一頁。
+          沒有可預覽的草稿。請由發布頁的「在新分頁預覽影片頁」開啟此頁。
         </p>
       </div>
     );
@@ -41,8 +41,8 @@ export default function PreviewPage() {
     <p className={`notice ${state.status === 'ready' ? 'notice--preview' : 'notice--warning'}`} role="status">
       <Eye size={16} aria-hidden="true" />
       {state.status === 'ready'
-        ? '發布前預覽：只有這台電腦看得到，在發布頁修改會自動更新。'
-        : '發布頁已關閉或離開，這裡顯示的是最後一份草稿，不會再更新。'}
+        ? '發布前預覽：僅限本機檢視，發布頁的修改會自動同步。'
+        : '發布頁已關閉，此處顯示最後一份草稿，不會再更新。'}
     </p>
   );
 

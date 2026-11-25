@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { parseSRT } from '../src/lib/srt.js';
 import { readChatData } from '../src/lib/chat.js';
 import { PALETTE_KEYS, resolveSpeakerColors, toSpeakerColor } from '../src/lib/speakers.js';
+import { LIST_KEYS, getList, isListKey, videoListKey } from '../src/lib/lists.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const videos = JSON.parse(await readFile(path.join(root, 'src/data/videos.json'), 'utf8'));
@@ -35,6 +36,12 @@ for (const video of videos) {
   if (video.id && ids.has(video.id)) error(`id 重複：「${video.id}」`);
   ids.add(video.id);
   if (video.youtubeId && !/^[\w-]{11}$/.test(video.youtubeId)) warn(`youtubeId 通常是 11 個字元：「${video.youtubeId}」`);
+
+  // 所屬列表：沒填歸在預設列表；填了但不是已知的列表就擋下，避免影片默默跑到別的列表
+  if (video.list !== undefined && !isListKey(video.list)) {
+    error(`list 只能是 ${LIST_KEYS.join('、')}：「${video.list}」`);
+  }
+  console.log(`  列表：${getList(videoListKey(video)).label}${video.list === undefined ? '（未設定，使用預設列表）' : ''}`);
 
   for (const [name, value] of Object.entries(video.speakers ?? {})) {
     if (!toSpeakerColor(value)) {

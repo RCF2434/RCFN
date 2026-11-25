@@ -1,5 +1,6 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { getList, videoListKey } from '../lib/lists.js';
 import { LayoutGrid, List, Plus, Search, SearchX, X } from 'lucide-react';
 import { videos } from '../lib/videos.js';
 import { collectTags, hasTag, normalizeTag } from '../lib/tags.js';
@@ -20,24 +21,27 @@ function readTags(params, allTags) {
   return out;
 }
 
-export default function ListPage() {
-  useDocumentTitle(null);
+/** listKey：顯示哪一個列表（見 lib/lists.js）；搜尋與標籤只在這個列表內 */
+export default function ListPage({ listKey }) {
+  const current = getList(listKey);
+  useDocumentTitle(current.label);
   const [query, setQuery] = useState('');
   const [params, setParams] = useSearchParams();
   // 檢視模式：grid = 卡片（不顯示說明），list = 清單（縮圖在左，標題說明在右）
   const [view, setView] = useStoredState('list-view', 'grid', (v) => v === 'grid' || v === 'list');
   const inputRef = useRef(null);
   const inputId = useId();
-  const allTags = useMemo(() => collectTags(videos), []);
+  const listVideos = useMemo(() => videos.filter((v) => videoListKey(v) === current.key), [current.key]);
+  const allTags = useMemo(() => collectTags(listVideos), [listVideos]);
   const selected = useMemo(() => readTags(params, allTags), [params, allTags]);
   const keyword = query.trim();
-  const search = useMemo(() => createVideoSearch(videos), []);
+  const search = useMemo(() => createVideoSearch(listVideos), [listVideos]);
 
   // 選了多個標籤時，影片要同時有這些標籤才列出
   // 有搜尋字時依相關程度排序（模糊搜尋），再套用標籤篩選
   const list = useMemo(
-    () => (search(keyword) ?? videos).filter((v) => selected.every((t) => hasTag(v.tags, t))),
-    [search, keyword, selected],
+    () => (search(keyword) ?? listVideos).filter((v) => selected.every((t) => hasTag(v.tags, t))),
+    [search, keyword, selected, listVideos],
   );
 
   // 還沒選的標籤；打字時只列出符合的
@@ -65,11 +69,12 @@ export default function ListPage() {
     .join('且');
 
   return (
+    <>
     <div className="container">
       <section className="page-head">
         <div className="field">
           <label htmlFor={inputId} className="field__label">
-            搜尋影片
+            搜尋 {current.label} 的影片
           </label>
           <div className="search search--tags" onClick={() => inputRef.current?.focus()}>
             <Search size={18} aria-hidden="true" />
@@ -172,7 +177,10 @@ export default function ListPage() {
           </button>
         </div>
       </div>
+      </div>
 
+      {/* 影片區另起一個容器：卡片格式放寬到 95%，上方的搜尋、標籤、工具列維持原本寬度 */}
+      <div className={`container${view === 'grid' ? ' container--cards' : ''}`}>
       {list.length > 0 ? (
         <ul className={view === 'list' ? 'video-list' : 'video-grid'} aria-label="影片列表">
           {list.map((video, index) => (
@@ -186,6 +194,10 @@ export default function ListPage() {
             />
           ))}
         </ul>
+      ) : listVideos.length === 0 ? (
+        <div className="empty-state">
+          <p>{current.label} 目前沒有影片。</p>
+        </div>
       ) : (
         <div className="empty-state">
           <SearchX size={36} aria-hidden="true" />
@@ -195,6 +207,7 @@ export default function ListPage() {
           </button>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

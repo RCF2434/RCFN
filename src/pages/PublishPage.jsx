@@ -22,9 +22,13 @@ import SpeakerColorPicker from '../components/publish/SpeakerColorPicker.jsx';
 import PublishStatus from '../components/publish/PublishStatus.jsx';
 import SubtitlePlayer from '../components/SubtitlePlayer.jsx';
 import TicketTear from '../components/TicketTear.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import TagInput from '../components/publish/TagInput.jsx';
 import ChannelField, { channelProblems, channelRows } from '../components/publish/ChannelField.jsx';
-import NotesEditor, { noteRows, notesProblems, rowsToNotes } from '../components/publish/NotesEditor.jsx';
+import NotesEditor, { noteRows, notesProblems, rowsToNotes, textRows } from '../components/publish/NotesEditor.jsx';
+import { usePublishDraft } from '../hooks/usePublishDraft.js';
+import { LISTS, isListKey, videoListKey } from '../lib/lists.js';
+import { formatSavedAt } from '../lib/notesDraft.js';
 import { numberNotes } from '../lib/notes.js';
 import { removeNotesDraft } from '../lib/notesDraft.js';
 import ChatField, { NO_CHAT, chatState } from '../components/publish/ChatField.jsx';
@@ -33,23 +37,25 @@ import { collectTags } from '../lib/tags.js';
 import { videoChannels, videos as bundledVideos } from '../lib/videos.js';
 
 const EMPTY = [];
-const EMPTY_FORM = { url: '', title: '', description: '', id: '' };
+// list：所屬列表（見 lib/lists.js），新增影片時必須選擇
+const EMPTY_FORM = { url: '', title: '', description: '', id: '', list: '' };
 /** 發布分成四頁，填完一頁按下一步 */
 const PAGES = ['影片與聊天室', '字幕與說話人', '註釋', '連線與發布'];
 
-export default function PublishPage() {
-  useDocumentTitle('發布影片');
+/**
+ * 發布頁（/publish）只新增影片；editId 有值時是編輯頁（/manage/<id>），載入 repo 裡的那支影片來更新。
+ * 兩者共用同一套四步驟表單。刪除影片在管理頁（ManagePage）。
+ */
+export default function PublishPage({ editId = null }) {
+  const editing = Boolean(editId);
+  useDocumentTitle(editing ? '編輯影片' : '發布影片');
   const uid = useId();
 
   /* ---------- GitHub 連線 ---------- */
-  const { settings, conn, setConn, connect, disconnect: disconnectGitHub } = useGitHubConnection();
-  const disconnect = () => {
-    disconnectGitHub();
-    setTarget('');
-  };
+  const { settings, conn, setConn, connect, disconnect } = useGitHubConnection();
 
   /* ---------- 表單 ---------- */
-  const [target, setTarget] = useState(''); // '' = 新增；否則為要更新的影片 id
+  const [target, setTarget] = useState(editId ?? ''); // '' = 新增；否則為要更新的影片 id
   const [form, setForm] = useState(EMPTY_FORM);
   const [idTouched, setIdTouched] = useState(false);
   const [sub, setSub] = useState(null); // { name, source: 'file' | 'repo', buffer?, text?, loading?, error? }
@@ -66,6 +72,8 @@ export default function PublishPage() {
   const loadSeq = useRef(0);
 
   const existing = target ? conn.videos?.find((v) => v.id === target) ?? null : null;
+  // 編輯頁在連線並找到影片之前，只顯示連線區塊
+  const showGate = editing && !existing;
   const mode = existing ? 'update' : 'create';
   const youtubeId = parseYouTubeId(form.url);
   const id = existing ? existing.id : idTouched ? form.id.trim() : (youtubeId ?? '');
@@ -91,7 +99,7 @@ export default function PublishPage() {
     embedCode == null
       ? null
       : EMBED_BLOCKED.has(embedCode)
-        ? '這支影片不允許在其他網站播放（擁有者關閉了嵌入，或影片有年齡限制），觀眾會看不到，請換一支。'
+        ? '這支影片不允許在其他網站播放（擁有者關閉了嵌入，或影片有年齡限制），觀眾將無法觀看，請改用其他影片。'
         : embedCode === 100
           ? '找不到這支影片，可能已刪除或設為私人。'
           : embedCode === 2
@@ -120,6 +128,8 @@ export default function PublishPage() {
       title: entry.title ?? '',
       description: entry.description ?? '',
       id: entry.id,
+      // 舊資料沒有 list，網站上一直顯示在預設列表，這裡照實帶入
+      list: videoListKey(entry),
     });
     setOverrides(entry.speakers ?? {});
     setTags(Array.isArray(entry.tags) ? entry.tags : EMPTY);
@@ -136,12 +146,22 @@ export default function PublishPage() {
     }
   }
 
+  // 編輯頁：連線後載入這支影片（只載入一次；更新後 repo 版本前進也不會蓋掉正在編輯的內容）
+  const loadedId = useRef(null);
+  useEffect(() => {
+    if (!editing || conn.status !== 'ready' || loadedId.current === editId) return;
+    if (!conn.videos.some((v) => v.id === editId)) return;
+    loadedId.current = editId;
+    chooseTarget(editId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, editId, conn.status, conn.videos]);
+
   async function acceptFile(file) {
     if (!file) return;
     ++loadSeq.current;
     setJob(null);
     if (file.size > MAX_SUBTITLE_BYTES) {
-      setSub({ name: file.name, source: 'file', error: '檔案超過 2 MB，看起來不是字幕檔。' });
+      setSub({ name: file.name, source: 'file', error: '檔案超過 2 MB，不是有效的字幕檔。' });
       return;
     }
     const buffer = await file.arrayBuffer();
@@ -228,6 +248,7 @@ export default function PublishPage() {
   const [videoP, subP, notesP, publishP] = pageProblems;
   if (!youtubeId) videoP.push(form.url.trim() ? '無法從網址辨識出 YouTube 影片' : '填入 YouTube 網址');
   else if (embedProblem) videoP.push('換一支可以嵌入播放的影片');
+  if (!isListKey(form.list)) videoP.push('選擇所屬列表');
   if (!form.title.trim()) videoP.push('填入標題');
   if (mode === 'create') {
     if (!id) videoP.push('填入網址代稱');
@@ -265,11 +286,77 @@ export default function PublishPage() {
     else goTo(page + 1);
   }
 
+  /*
+   * ---------- 整份草稿自動儲存（不小心關掉分頁可以接著填） ----------
+   * 只有新增影片才存草稿；編輯頁每次都從 repo 載入，避免舊草稿蓋掉 repo 上較新的內容
+   * （註釋另有每支影片各自的草稿，見 NotesEditor）。
+   */
+  const readyChannels = channels.filter((r) => r.status === 'ready').map((r) => r.channel);
+  const draftNotes = notes.filter((r) => r.time.trim() || r.text.trim()).map((r) => ({ time: r.time, text: r.text }));
+  const draft = usePublishDraft(
+    {
+      enabled: !editing,
+      formPart: {
+        form,
+        idTouched,
+        tags,
+        channels: readyChannels,
+        overrides,
+        notes: draftNotes,
+        encoding,
+        page,
+      },
+      sub,
+      chat,
+      hasContent: Boolean(
+        form.url.trim() ||
+          form.title.trim() ||
+          form.description.trim() ||
+          tags.length ||
+          readyChannels.length ||
+          draftNotes.length ||
+          sub ||
+          chat.mode !== 'none',
+      ),
+    },
+    (saved) => {
+      const f = saved.form;
+      setForm({ ...EMPTY_FORM, ...f.form });
+      setIdTouched(Boolean(f.idTouched));
+      setTags(Array.isArray(f.tags) ? f.tags : EMPTY);
+      setChannels(channelRows(f.channels));
+      setOverrides(f.overrides ?? {});
+      setNotes(textRows(f.notes));
+      setEncoding(f.encoding ?? 'auto');
+      if (saved.sub) setSub(saved.sub);
+      if (saved.chat) setChat(saved.chat);
+      const restoredPage = Math.min(Math.max(Number(f.page) || 0, 0), PAGES.length - 1);
+      setPage(restoredPage);
+      setVisited(new Set(Array.from({ length: restoredPage + 1 }, (_, i) => i)));
+    },
+  );
+
+  // 發布成功（開始部署）就清掉草稿
+  const { markPublished } = draft;
+  useEffect(() => {
+    if (job?.phase === 'deploying') markPublished();
+  }, [job?.phase, job?.commitSha, markPublished]);
+
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  function discardDraft() {
+    setConfirmDiscard(false);
+    draft.discard();
+    chooseTarget('');
+    goTo(0);
+    setVisited(new Set([0]));
+  }
+
   // 要寫進 videos.json 的這一筆；發布與新分頁預覽共用
   const description = form.description.trim();
   const entry = {
     id,
     youtubeId,
+    list: isListKey(form.list) ? form.list : undefined,
     title: form.title.trim(),
     description: description || undefined,
     subtitle: existing?.subtitle ?? `subtitles/${id}.srt`,
@@ -321,13 +408,14 @@ export default function PublishPage() {
       } else if (chat.mode === 'remove') {
         setChat(NO_CHAT);
       }
-      // 之後再改就是更新這支影片
-      setTarget(id);
+      // 新增後要再修改，從「編輯這支影片」進編輯頁（發布頁只負責新增）
       setJob({ phase: 'deploying', id, commitSha: result.commitSha, startedAt: Date.now() });
     } catch (err) {
       setJob({ phase: 'failed', id, error: err.message });
     }
   }
+  // 發布成功後（部署中或完成）不再列出「發布前還需要」：此時網址代稱已被這支影片使用，列出來只會誤導
+  const published = job && job.phase !== 'committing' && job.phase !== 'failed';
 
   useDeployWatcher(conn.gh, job, setJob);
 
@@ -339,19 +427,64 @@ export default function PublishPage() {
 
   return (
     <div className="container publish-page">
-      <Link to="/" className="back-link">
+      <Link to={editing ? '/manage' : '/'} className="back-link">
         <ArrowLeft size={18} aria-hidden="true" />
-        返回列表
+        {editing ? '返回管理影片' : '返回列表'}
       </Link>
 
       <header className="video-head">
         <p className="eyebrow">Backstage</p>
-        <h1>發布影片</h1>
+        <h1>{editing ? '編輯影片' : '發布影片'}</h1>
         <p className="lead">
-          貼上 YouTube 網址、選字幕檔，先在預覽裡確認效果。按下發布後，網站會把資料寫進你的 GitHub repo 並自動重新部署，約 1–2
-          分鐘後所有人都看得到。
+          {editing
+            ? '修改影片資料、字幕或註釋後，於第 4 步按「更新到網站」。資料會寫入本網站的 GitHub repo 並自動重新部署，約 1–2 分鐘後更新上線。'
+            : '貼上 YouTube 網址並選擇字幕檔，於預覽中確認效果。發布後資料會寫入本網站的 GitHub repo 並自動重新部署，約 1–2 分鐘後公開上線。已發布的影片請到「管理影片」編輯或刪除。'}
         </p>
       </header>
+
+      {/* 編輯頁：連線並找到影片前，只顯示連線 */}
+      {showGate && (
+        <div className="publish-gate">
+          {conn.status === 'ready' ? (
+            <p className="notice notice--error" role="alert">
+              repo 裡找不到「{editId}」這支影片，可能已被刪除。<Link to="/manage">返回管理影片</Link>
+            </p>
+          ) : (
+            <ConnectionPanel
+              settings={settings}
+              conn={conn}
+              onConnect={connect}
+              onDisconnect={disconnect}
+              step={null}
+              intro="編輯影片需要讀取本網站的 GitHub repo。"
+            />
+          )}
+        </div>
+      )}
+      {!showGate && (
+      <>
+
+      {draft.restoredAt && (
+        <p className="notice notice--preview publish-draft-notice" role="status">
+          已還原 {formatSavedAt(draft.restoredAt)} 自動儲存的草稿{form.title.trim() ? `「${form.title.trim()}」` : ''}，可繼續編輯。{' '}
+          <button type="button" className="link-btn" onClick={() => setConfirmDiscard(true)} disabled={busy}>
+            捨棄草稿，重新開始
+          </button>
+        </p>
+      )}
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="捨棄這份草稿？"
+        confirmLabel="捨棄並重新開始"
+        cancelLabel="保留草稿"
+        danger
+        onConfirm={discardDraft}
+        onCancel={() => setConfirmDiscard(false)}
+      >
+        <p>
+          目前填寫的影片資料、字幕檔、說話人顏色、註釋與聊天室紀錄都會清空，自動儲存的草稿也會刪除，且無法復原。
+        </p>
+      </ConfirmDialog>
 
       <nav ref={stepsRef} className="wizard-steps" aria-label="發布步驟">
         <ol>
@@ -388,40 +521,27 @@ export default function PublishPage() {
               </h2>
             </div>
 
-            {conn.status !== 'ready' && (
-              <p className="field__hint">
-                要修改已經發布的影片，先
-                <button type="button" className="link-btn" onClick={() => goTo(3)}>
-                  到第 4 步連線 GitHub
-                </button>
-                ，回來這裡就能選擇。
-              </p>
-            )}
-
-            {conn.status === 'ready' && conn.videos.length > 0 && (
-              <div className="field">
-                <label className="field__label" htmlFor={`${uid}-target`}>
-                  要做什麼
-                </label>
-                <div className="select">
-                  <select
-                    id={`${uid}-target`}
-                    className="input"
-                    value={target}
-                    onChange={(event) => chooseTarget(event.target.value)}
-                    disabled={busy}
-                  >
-                    <option value="">新增一支影片</option>
-                    {conn.videos.map((video) => (
-                      <option key={video.id} value={video.id}>
-                        更新：{video.title}（{video.id}）
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={18} aria-hidden="true" />
-                </div>
+            <fieldset className="field choice-group">
+              <legend className="field__label">所屬列表</legend>
+              <div className="choice-group__options">
+                {LISTS.map((l) => (
+                  <label key={l.key} className="choice">
+                    <input
+                      type="radio"
+                      name={`${uid}-list`}
+                      value={l.key}
+                      checked={form.list === l.key}
+                      onChange={() => setForm((f) => ({ ...f, list: l.key }))}
+                      disabled={busy}
+                    />
+                    <span className="choice__label" lang={l.key === 'nijisanji' ? 'ja' : 'en'}>
+                      {l.label}
+                    </span>
+                  </label>
+                ))}
               </div>
-            )}
+              <p className="field__hint">影片只會出現在所選的列表，搜尋也只在該列表內進行。</p>
+            </fieldset>
 
             <div className="field">
               <label className="field__label" htmlFor={`${uid}-url`}>
@@ -454,7 +574,7 @@ export default function PublishPage() {
                 ) : form.url.trim() ? (
                   '辨識不出影片 ID。支援 watch?v=、youtu.be/、shorts/ 等網址。'
                 ) : (
-                  '貼上網址後，會用右邊的預覽自動檢查影片能不能嵌入播放。'
+                  '貼上網址後，會以右側預覽自動檢查影片是否允許嵌入播放。'
                 )}
               </p>
             </div>
@@ -493,7 +613,7 @@ export default function PublishPage() {
                 disabled={busy}
               />
               <p id={`${uid}-tags-hint`} className="field__hint">
-                按 Enter 或逗號加入，最多 10 個，每個最多 20 字。點下方已有的標籤可以直接加入。
+                按 Enter 或逗號加入，最多 10 個，每個最多 20 字。點選下方既有標籤可直接加入，拖曳標籤可調整順序。
                 標籤的文字顏色在 <Link to="/tag-colors">標籤顏色</Link> 設定。
               </p>
             </div>
@@ -528,7 +648,7 @@ export default function PublishPage() {
               )}
               <p id={`${uid}-id-hint`} className="field__hint">
                 影片頁網址會是 <span className="mono">…/#/video/{id || '代稱'}</span>
-                {existing ? '，更新時不能改。' : '。預設用影片 ID，可以改成好記的英文。'}
+                {existing ? '，更新時不能改。' : '。預設為影片 ID，可改為容易辨識的英文。'}
               </p>
             </div>
           </section>
@@ -573,7 +693,7 @@ export default function PublishPage() {
               />
               <Upload size={24} aria-hidden="true" />
               <strong>{sub ? '換一個字幕檔' : '選擇 .srt 或 .ass 檔'}</strong>
-              <span>或把檔案拖曳到這裡；.ass 會自動轉成 .srt，Name 欄位當作說話人</span>
+              <span>或將檔案拖曳至此；.ass 會自動轉為 .srt，Name 欄位作為說話人</span>
             </label>
 
             {sub && (
@@ -616,8 +736,8 @@ export default function PublishPage() {
                     </div>
                     <p className={`field__hint${decoded?.garbled ? ' field__hint--error' : ''}`}>
                       {decoded?.garbled
-                        ? '看起來有亂碼，換一個編碼試試。'
-                        : '發布時會轉存成 UTF-8。預覽裡的字是亂碼的話，換一個編碼。'}
+                        ? '疑似有亂碼，請改用其他編碼。'
+                        : '發布時會轉存為 UTF-8。預覽出現亂碼時，請改用其他編碼。'}
                     </p>
                   </div>
                 )}
@@ -662,10 +782,10 @@ export default function PublishPage() {
               </h2>
             </div>
             {!parsed ? (
-              <p className="muted">選擇字幕檔後，這裡會列出字幕裡的說話人。</p>
+              <p className="muted">選擇字幕檔後，此處會列出字幕中的說話人。</p>
             ) : speakers.length === 0 ? (
               <p className="muted">
-                字幕裡沒有說話人標記，所有字幕會用中性色。要分色的話，在字幕行開頭寫{' '}
+                字幕中沒有說話人標記，所有字幕會以中性色顯示。如需分色，請在字幕行開頭加上{' '}
                 <code className="mono">{'<v 名字>'}</code>。
               </p>
             ) : (
@@ -687,7 +807,7 @@ export default function PublishPage() {
                 </div>
                 {duplicateColors.length > 0 && (
                   <p className="field__hint">
-                    {duplicateColors.map((names) => names.join('、')).join('；')} 用了同一個顏色，觀眾會比較難分辨。
+                    {duplicateColors.map((names) => names.join('、')).join('；')} 使用相同顏色，觀看時不易區分。
                   </p>
                 )}
               </>
@@ -724,7 +844,7 @@ export default function PublishPage() {
             onConnect={connect}
             onDisconnect={disconnect}
             step={null}
-            intro="發布時需要寫入這個網站的 GitHub repo。只想預覽字幕效果的話，可以不用連線。"
+            intro="發布時需要寫入本網站的 GitHub repo。僅預覽字幕效果時不需連線。"
           />
 
           <section className="panel panel--ticket publish-submit" aria-labelledby={`${uid}-publish`}>
@@ -733,9 +853,9 @@ export default function PublishPage() {
               {mode === 'create' ? '發布' : '更新'}
             </h2>
 
-            {problems.length > 0 ? (
+            {published ? null : problems.length > 0 ? (
               <div>
-                <p className="field__label">發布前還需要：</p>
+                <p className="field__label">{editing ? '更新前還需要：' : '發布前還需要：'}</p>
                 <ul className="checklist">
                   {problems.map((p) => (
                     <li key={p.text}>
@@ -769,17 +889,30 @@ export default function PublishPage() {
               <>
                 <TicketTear />
                 <PublishStatus job={job} repoUrl={conn.gh?.repoUrl ?? ''} siteUrl={siteUrl} />
-                {job.phase !== 'committing' && (
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    onClick={() => {
-                      chooseTarget('');
-                      goTo(0);
-                    }}
-                  >
-                    再發布一支
-                  </button>
+                {published && (
+                  <div className="btn-row">
+                    {editing ? (
+                      <Link to="/manage" className="btn btn--ghost">
+                        返回管理影片
+                      </Link>
+                    ) : (
+                      <>
+                        <Link to={`/manage/${encodeURIComponent(job.id)}`} className="btn btn--ghost">
+                          編輯這支影片
+                        </Link>
+                        <button
+                          type="button"
+                          className="btn btn--ghost"
+                          onClick={() => {
+                            chooseTarget('');
+                            goTo(0);
+                          }}
+                        >
+                          再發布一支
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
               </>
             )}
@@ -811,6 +944,11 @@ export default function PublishPage() {
               </button>
             )}
           </div>
+          {(draft.error || draft.savedAt) && (
+            <p className={`field__hint publish-draft-status${draft.error ? ' field__hint--error' : ''}`} role="status">
+              {draft.error ?? `已自動儲存草稿（${formatSavedAt(draft.savedAt)}），關閉分頁後重新開啟可繼續編輯。`}
+            </p>
+          )}
         </div>
 
         {/* ---------- 預覽 ---------- */}
@@ -840,11 +978,13 @@ export default function PublishPage() {
               在新分頁預覽影片頁
             </button>
             <p className="field__hint">
-              用正式影片頁的版面預覽，只有這台電腦看得到。這一頁要保持開著，修改會自動同步過去。
+              以正式影片頁的版面預覽，僅限本機檢視。預覽期間請保持此頁開啟，修改內容會自動同步。
             </p>
           </div>
         </section>
       </div>
+      </>
+      )}
     </div>
   );
 }

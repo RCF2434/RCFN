@@ -18,3 +18,10 @@ export function contrastRatio(a, b) {
 /** 標籤底色：淺色主題米色、深色主題深灰（與 tokens.css 的 --surface 相同） */
 export const TAG_BACKGROUNDS = { light: '#f5f0e8', dark: '#2a2824' };
 export const MIN_CONTRAST = 4.5;
+
+/**
+ * 說話人顏色要對比的底色：
+ * - light（淺色階）用在「黑底彩字」的半透明黑底上
+ * - deep（深色階）用在「白框彩字」的白色描邊上，以及「彩框白字」襯在白字後面
+ */
+export const SUBTITLE_BACKGROUNDS = { dark: '#141414', white: '#FFFFFF' };

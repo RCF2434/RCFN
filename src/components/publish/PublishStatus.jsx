@@ -106,19 +106,37 @@ export default function PublishStatus({ job, repoUrl, siteUrl }) {
         <p className="notice">
           {job.note}{' '}
           <a href={`${repoUrl}/actions`} target="_blank" rel="noreferrer">
-            打開 GitHub Actions
+            開啟 GitHub Actions
           </a>
         </p>
       )}
 
-      {(phase === 'done' || phase === 'unknown' || phase === 'deploying') && commitSha && (
+      {/* 刪除影片：沒有要分享的網址，改說明結果 */}
+      {job.kind === 'delete' && commitSha && (
         <div className="publish-share">
-          <p className="field__label">{phase === 'done' ? '已上線，分享這個網址：' : '上線後的網址：'}</p>
+          <p>
+            {phase === 'done'
+              ? `已從網站移除「${job.title}」。`
+              : `已從 repo 移除「${job.title}」，部署完成後會從網站消失。`}
+            {job.deletedFiles?.length > 0 && ` 同時刪除了 ${job.deletedFiles.length} 個檔案。`}
+          </p>
+          {phase === 'done' && (
+            <a className="btn" href={openUrl} target="_blank" rel="noreferrer">
+              <ExternalLink size={16} aria-hidden="true" />
+              {job.openLabel ?? '開啟影片列表'}
+            </a>
+          )}
+        </div>
+      )}
+
+      {job.kind !== 'delete' && (phase === 'done' || phase === 'unknown' || phase === 'deploying') && commitSha && (
+        <div className="publish-share">
+          <p className="field__label">{phase === 'done' ? '已上線，公開網址：' : '上線後的網址：'}</p>
           <CopyLink url={shareUrl} />
           {phase === 'done' && (
             <a className="btn" href={openUrl} target="_blank" rel="noreferrer">
               <ExternalLink size={16} aria-hidden="true" />
-              {job.openLabel ?? '打開影片頁'}
+              {job.openLabel ?? '開啟影片頁'}
             </a>
           )}
         </div>

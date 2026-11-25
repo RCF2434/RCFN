@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNotesDraft } from '../../hooks/useNotesDraft.js';
 import { formatSavedAt } from '../../lib/notesDraft.js';
+import ConfirmDialog from '../ConfirmDialog.jsx';
 import { Clock, Download, Play, Plus, Upload, X } from 'lucide-react';
 import {
   MAX_NOTES_FILE_BYTES,
@@ -22,6 +23,13 @@ export function noteRows(notes) {
     .map((n) => ({ key: ++nextKey, time: formatTimestamp(n.time), text: n.text ?? '' }));
 }
 
+/** 草稿裡存的 [{ time: 輸入的文字, text }] → 編輯列 */
+export function textRows(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter((n) => n && typeof n.time === 'string' && typeof n.text === 'string')
+    .map((n) => ({ key: ++nextKey, time: n.time, text: n.text }));
+}
+
 const isBlank = (row) => !row.time.trim() && !row.text.trim();
 
 /** 草稿的 [{ time, text }] → 編輯列 */
@@ -40,7 +48,7 @@ export function notesProblems(rows) {
   const problems = [];
   const filled = rows.filter((row) => !isBlank(row));
   if (filled.some((row) => parseTimeInput(row.time) === null)) problems.push('修正註釋的時間格式（例如 1:23）');
-  if (filled.some((row) => !row.text.trim())) problems.push('填入註釋內容，或刪掉空的註釋');
+  if (filled.some((row) => !row.text.trim())) problems.push('填入註釋內容，或刪除空白的註釋');
   return problems;
 }
 
@@ -74,6 +82,7 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
   };
   // 匯入狀態：pending = 等使用者選「取代」或「加在後面」
   const [io, setIo] = useState({ pending: null, message: null, error: null });
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const filled = rows.filter((row) => !isBlank(row));
 
   const exportDraft = () => {
@@ -85,14 +94,14 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
   const readFile = async (file) => {
     if (!file) return;
     if (file.size > MAX_NOTES_FILE_BYTES) {
-      setIo({ pending: null, message: null, error: '檔案太大，看起來不是註釋檔。' });
+      setIo({ pending: null, message: null, error: '檔案過大，不是有效的註釋檔。' });
       return;
     }
     try {
       const parsed = parseNotesFile(await file.text());
       const mismatch =
         parsed.video?.youtubeId && video?.youtubeId && parsed.video.youtubeId !== video.youtubeId
-          ? `這份註釋原本是給「${parsed.video.title || parsed.video.youtubeId}」的，和目前的影片不同。`
+          ? `此註釋檔原屬於「${parsed.video.title || parsed.video.youtubeId}」，與目前的影片不同。`
           : null;
       if (!filled.length) {
         applyImport(parsed.items, 'replace', mismatch);
@@ -140,7 +149,7 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
             <button type="button" className="btn" onClick={draft.restore} disabled={disabled}>
               還原草稿
             </button>
-            <button type="button" className="btn btn--ghost" onClick={draft.discard} disabled={disabled}>
+            <button type="button" className="btn btn--ghost" onClick={() => setConfirmDiscard(true)} disabled={disabled}>
               捨棄草稿
             </button>
           </div>
@@ -149,11 +158,29 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
       {draft.restoredAt && (
         <p className="field__hint" role="status">
           已還原 {formatSavedAt(draft.restoredAt)} 自動儲存的草稿 ·{' '}
-          <button type="button" className="link-button" onClick={draft.discard} disabled={disabled}>
+          <button type="button" className="link-button" onClick={() => setConfirmDiscard(true)} disabled={disabled}>
             捨棄草稿
           </button>
         </p>
       )}
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="捨棄註釋草稿？"
+        confirmLabel="捨棄草稿"
+        cancelLabel="保留"
+        danger
+        onConfirm={() => {
+          setConfirmDiscard(false);
+          draft.discard();
+        }}
+        onCancel={() => setConfirmDiscard(false)}
+      >
+        <p>
+          {draft.restoredAt
+            ? '還原進來的註釋會清空，自動儲存的註釋草稿也會刪除，無法復原。'
+            : '自動儲存的註釋草稿會刪除，無法復原。目前畫面上的註釋不受影響。'}
+        </p>
+      </ConfirmDialog>
 
       {rows.length > 0 && (
         <ul className="note-rows">
@@ -223,14 +250,14 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
                   onChange={(event) => update(row.key, { text: event.target.value })}
                   aria-label={number ? `註釋 ${number} 的內容` : '註釋內容'}
                 />
-                {badTime && <p className="field__hint field__hint--error">時間格式看不懂，請寫成 1:23 或 1:02:03。</p>}
+                {badTime && <p className="field__hint field__hint--error">時間格式無法辨識，格式為 1:23 或 1:02:03。</p>}
                 {cue && number && (
                   <p className="field__hint">
-                    會標在 {formatTimestamp(cue.start)}–{formatTimestamp(cue.end)} 這句字幕上，字幕一出現（*{number}）就會跟著出現。
+                    會標在 {formatTimestamp(cue.start)}–{formatTimestamp(cue.end)} 這句字幕上，字幕出現時會一併標示（*{number}）。
                   </p>
                 )}
                 {uncovered && (
-                  <p className="field__hint">這個時間沒有字幕，字幕上不會出現（*{number ?? '?'}），只會列在影片頁下方。</p>
+                  <p className="field__hint">此時間沒有字幕，字幕上不會標示（*{number ?? '?'}），僅列於影片頁下方。</p>
                 )}
               </li>
             );
@@ -311,8 +338,8 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
       )}
 
       <p className="field__hint">
-        註釋會自動存成這個瀏覽器裡的草稿，下次打開同一支影片會還原；發布後草稿會清掉。要換電腦或備份，可以「匯出」存成檔案，之後再「匯入」。
-        新增時會自動填入預覽目前播放的時間。字幕播到這個時間時，那句字幕後面會標示（*編號）；影片頁下方會列出所有註釋，點編號就跳到該時間。編號依時間先後自動排列。
+        註釋會自動儲存為此瀏覽器中的草稿，再次開啟同一支影片時會還原；發布後草稿即清除。如需更換電腦或備份，可「匯出」為檔案，之後再「匯入」。
+        新增時會自動填入預覽目前的播放時間。字幕播放至該時間時，該句字幕後方會標示（*編號）；影片頁下方會列出所有註釋，點選編號即可跳至該時間。編號依時間先後自動排列。
       </p>
     </div>
   );

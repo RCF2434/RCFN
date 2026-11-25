@@ -125,12 +125,23 @@ main {
   color: #ede7dc;
 }
 
+/* 頁首高度：其他地方的捲動定位、黏性元素也用這個值 */
+:root {
+  --header-h: 64px;
+}
+
+@media (max-width: 480px) {
+  :root {
+    --header-h: 40px;
+  }
+}
+
 .site-nav__inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  min-height: 64px;
+  min-height: var(--header-h);
 }
 
 .brand {
@@ -150,7 +161,48 @@ main {
   gap: var(--space-lg);
 }
 
+/* 手機：頁首高 40px，要放兩個列表，品牌名只留 RCFN，元素一起縮小 */
+@media (max-width: 480px) {
+  .site-nav__inner {
+    height: var(--header-h);
+  }
+
+  .brand {
+    gap: var(--space-xs);
+    font-size: 1.05rem;
+  }
+
+  .brand svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .brand__sub {
+    display: none;
+  }
+
+  .site-nav__links {
+    gap: var(--space-md);
+  }
+
+  .nav-link {
+    padding-block: 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  .site-nav .nav-icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .site-nav .nav-icon-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .nav-link {
+  white-space: nowrap;
   position: relative;
   padding: 0.5rem 0;
   color: #ede7dc;
@@ -395,19 +447,242 @@ main {
   font-weight: 500;
 }
 
+/* 只給螢幕閱讀器的文字 */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ===== 管理影片頁 ===== */
+.manage-page {
+  display: grid;
+  gap: var(--space-xl);
+  align-content: start;
+}
+
+.manage-page .video-head,
+.manage-page .back-link {
+  margin-bottom: 0;
+}
+
+.manage-page .conn-panel {
+  margin-bottom: 0;
+}
+
+/* 要寫成 .panel.manage-panel：.panel 的 justify-items: start 定義在後面，同權重會蓋掉 */
+.panel.manage-panel {
+  justify-items: stretch;
+}
+
+.manage-panel__head,
+.manage-panel__filters,
+.manage-list {
+  width: 100%;
+}
+
+.manage-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.manage-panel__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.manage-search {
+  flex: 1 1 16rem;
+  max-width: 28rem;
+}
+
+.choice__count {
+  min-width: 1.5em;
+  padding: 0 0.4em;
+  border-radius: 999px;
+  background: var(--sh-dark);
+  color: var(--surface);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.manage-list {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manage-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--flat);
+}
+
+.manage-row__thumb {
+  flex: none;
+  width: 120px;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(var(--r-sm) - 4px);
+  object-fit: cover;
+}
+
+.manage-row__body {
+  display: grid;
+  flex: 1 1 14rem;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.manage-row__title {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.manage-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-sm);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.manage-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* ===== 擇一選項（發布頁的所屬列表） ===== */
+.choice-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-group legend {
+  margin-bottom: var(--space-xs);
+  padding: 0;
+}
+
+.choice-group__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.choice {
+  position: relative;
+  cursor: pointer;
+}
+
+.choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choice__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 44px;
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  box-shadow: var(--flat);
+  font-weight: 600;
+  transition: box-shadow 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+/* 圓形選取指示 */
+.choice__label::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.choice:hover .choice__label {
+  color: var(--text);
+}
+
+.choice input:checked + .choice__label {
+  color: var(--accent-text);
+  box-shadow: var(--concave);
+}
+
+.choice input:checked + .choice__label::before {
+  border-color: var(--gold);
+  background: radial-gradient(circle, var(--gold) 0 3.5px, transparent 4px);
+}
+
+.choice input:focus-visible + .choice__label {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.choice input:disabled + .choice__label {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .lead {
   max-width: 60ch;
   color: var(--text-muted);
   margin-bottom: 0.75rem;
 }
 
+/* 卡片格式：依視窗寬度固定欄數 */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  grid-template-columns: minmax(0, 1fr); /* 0–562px：一欄 */
   gap: var(--space-xl);
   margin: 0;
   padding: 0 0 clamp(4rem, 8vw, 6rem);
   list-style: none;
+}
+
+@media (min-width: 563px) {
+  .video-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 563–960px */
+  }
+}
+
+@media (min-width: 961px) {
+  .video-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)); /* 961–1470px */
+  }
+}
+
+@media (min-width: 1471px) {
+  .video-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* 1471px 以上 */
+  }
+}
+
+/* 列表頁的影片區在卡片格式時放寬到視窗的 95%（搜尋、標籤、工具列、清單格式與其他頁面維持 .container 的寬度） */
+.container.container--cards {
+  max-width: 95%;
 }
 
 .video-card-item {
@@ -588,6 +863,12 @@ main {
   font-size: clamp(1.8rem, 3.5vw, 2.4rem);
 }
 
+/* 影片頁的標題（發布頁的「發布影片」維持上面的大小） */
+.video-page .video-head h1 {
+  font-size: 20px;
+  line-height: 28px;
+}
+
 .video-info {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
@@ -622,6 +903,11 @@ main {
   max-width: 100%;
 }
 
+/* 撕線要用負邊距延伸到面板兩側，不能被上面的 max-width 卡住 */
+.panel > .ticket-tear {
+  max-width: none;
+}
+
 .panel--ticket {
   justify-items: stretch;
   gap: var(--space-sm);
@@ -633,6 +919,11 @@ main {
 
 .panel__text {
   max-width: 68ch;
+}
+
+/* 影片說明：照發布時打的換行顯示（多個空白仍合併成一個） */
+.video-desc {
+  white-space: pre-line;
 }
 
 .meta {
@@ -1289,7 +1580,7 @@ code.mono {
 /* ===== 發布頁分頁 ===== */
 .wizard-steps {
   margin-bottom: var(--space-xl);
-  scroll-margin-top: calc(64px + env(safe-area-inset-top, 0px) + 1rem);
+  scroll-margin-top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 1rem);
 }
 
 .wizard-steps ol {
@@ -1384,6 +1675,88 @@ code.mono {
   gap: var(--space-xl);
 }
 
+/* ===== 二次確認對話框（ConfirmDialog） ===== */
+.confirm-dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  /* 只用下方的暗影：浮雕陰影的亮色那半在暗色遮罩上會變成一圈光 */
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(20, 18, 15, 0.45);
+}
+
+.confirm-dialog__body {
+  display: grid;
+  gap: var(--space-md);
+  padding: 1.5rem;
+}
+
+.confirm-dialog__title {
+  font-size: 1.2rem;
+}
+
+.confirm-dialog__text {
+  display: grid;
+  gap: var(--space-xs);
+  color: var(--text-muted);
+}
+
+.confirm-dialog__text p {
+  margin: 0;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+/* 不可復原的動作：警示色外框與文字 */
+.btn--danger {
+  border-color: var(--error);
+  color: var(--error-text);
+}
+
+.btn--danger:disabled {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+}
+
+/* 確認框裡要刪除的檔案清單 */
+.confirm-dialog__files {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+/* 發布頁的刪除影片區塊：左側警示色線 */
+.danger-zone {
+  justify-items: start;
+  border-left: 3px solid var(--error);
+}
+
+.danger-zone .publish-status {
+  justify-self: stretch;
+}
+
+/* 草稿：還原提示在步驟列上方，自動儲存狀態在上一步／下一步下方 */
+.publish-draft-notice {
+  margin: 0 0 var(--space-md);
+}
+
+.publish-draft-status {
+  margin-top: calc(-1 * var(--space-md));
+}
+
 .wizard-page[hidden] {
   display: none;
 }
@@ -1448,7 +1821,7 @@ code.mono {
 
   .publish-preview {
     position: sticky;
-    top: calc(64px + env(safe-area-inset-top, 0px) + 1.5rem);
+    top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 1.5rem);
   }
 }
 
@@ -1549,6 +1922,25 @@ code.mono {
 
 .speaker-picker legend {
   margin-bottom: 0.4rem;
+}
+
+/* 自訂色旁的字幕預覽：暖灰底，白色描邊才看得出來 */
+.speaker-preview {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: 100%;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--r-sm);
+  background: var(--warm-grey);
+}
+
+.speaker-preview__line {
+  padding: 0.05em 0.4em 0.1em;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .swatches {
@@ -1829,6 +2221,31 @@ code.mono {
   color: var(--text-muted);
 }
 
+/* 標籤可拖曳排序：手型游標；觸控拖曳時不捲動頁面 */
+.tag-chip--sortable {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.tag-chip--sortable:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.tag-chip--sortable .tag-chip__remove {
+  cursor: pointer;
+}
+
+.tag-input.is-sorting,
+.tag-input.is-sorting .tag-chip--sortable {
+  cursor: grabbing;
+}
+
+.tag-chip.is-dragging {
+  box-shadow: var(--convex-strong);
+}
+
 .tag-suggest {
   display: grid;
   gap: var(--space-xs);
@@ -1874,7 +2291,7 @@ code.mono {
 
   .tag-colors-save {
     position: sticky;
-    top: calc(64px + env(safe-area-inset-top, 0px) + 1.5rem);
+    top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 1.5rem);
   }
 }
 
@@ -1936,9 +2353,10 @@ code.mono {
   pointer-events: none;
 }
 
+/* 兩個色碼欄位上下排，對比數值才放得進預覽右邊（瀏覽器的選色器會蓋住欄位下方） */
 .hex-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-md);
   margin-top: var(--space-sm);
 }
@@ -1950,8 +2368,15 @@ code.mono {
 
 .hex-field__row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-xs);
+}
+
+/* 對比數值接在預覽右邊；太窄時整段換到下一行 */
+.hex-field__contrast {
+  flex: 1 1 8rem;
+  margin: 0;
 }
 
 .hex-field__row .input {
@@ -1983,10 +2408,10 @@ code.mono {
 }
 
 /* ===== Channel ===== */
+/* 和上方標籤之間用 TicketTear 分隔 */
 .video-channel {
   display: grid;
   gap: var(--space-xs);
-  margin-top: var(--space-sm);
 }
 
 .channel-badge {
@@ -2073,6 +2498,60 @@ code.mono {
 .channel-row {
   display: grid;
   gap: var(--space-2xs);
+  border-radius: var(--r-sm);
+  transition: box-shadow 0.15s var(--ease), opacity 0.15s var(--ease);
+}
+
+/* 左邊拖曳把手＋右邊的頻道或連結欄位 */
+.channel-row__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.channel-row__main > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.drag-handle {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none; /* 觸控拖曳時不要捲動頁面 */
+}
+
+.drag-handle:hover {
+  color: var(--text);
+}
+
+.drag-handle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.drag-handle:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* 拖曳中：被拖的那列浮起來，整頁游標維持抓取狀態 */
+.channel-rows.is-sorting,
+.channel-rows.is-sorting .drag-handle {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.channel-row.is-dragging {
+  box-shadow: var(--convex-strong);
 }
 
 .channel-field__add {
@@ -2250,7 +2729,7 @@ code.mono {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: baseline;
   gap: var(--space-sm);
-  scroll-margin-top: calc(64px + 1rem);
+  scroll-margin-top: calc(var(--header-h) + 1rem);
 }
 
 .note__jump {

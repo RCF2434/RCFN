@@ -49,6 +49,51 @@ export async function publishVideo(gh, { branch, entry, subtitleText, mode, extr
   }
 }
 
+/**
+ * 從 videos.json 移除一支影片，回傳新陣列與被移除的那筆。
+ * 也回傳要一併刪除的檔案（字幕、聊天室紀錄）；其他影片還在用的同一個檔案不刪。
+ */
+export function removeVideo(videos, id) {
+  const index = videos.findIndex((video) => video.id === id);
+  if (index === -1) throw new Error(`repo 裡已經沒有「${id}」這支影片，可能已被刪除，請重新讀取。`);
+  const removed = videos[index];
+  const rest = videos.filter((_, i) => i !== index);
+  const inUse = new Set(rest.flatMap((video) => [video.subtitle, video.chat]).filter(Boolean));
+  const files = [removed.subtitle, removed.chat]
+    .filter((path) => typeof path === 'string' && path && !inUse.has(path))
+    .map((path) => `public/${path.replace(/^\/+/, '')}`);
+  return { videos: rest, removed, files };
+}
+
+/**
+ * 刪除影片：videos.json 移除那一筆，並刪除它的字幕檔與聊天室紀錄，全部寫進同一個 commit。
+ * 只刪 repo 裡確實存在的檔案（刪不存在的檔案會讓整個 commit 失敗）。分支在途中被更新時自動重試。
+ */
+export async function deleteVideo(gh, { branch, id }) {
+  for (let attempt = 1; ; attempt += 1) {
+    const head = await gh.getHead(branch);
+    const { videos, removed, files } = removeVideo(await gh.readVideos(head.commitSha), id);
+    const existing = [];
+    for (const path of files) {
+      if (await gh.pathExists(path, head.commitSha)) existing.push(path);
+    }
+    try {
+      const commitSha = await gh.commitFiles({
+        branch,
+        head,
+        message: `刪除影片：${removed.title}\n\n由RCFN · 非官方字幕的發布頁送出。`,
+        files: [
+          { path: VIDEOS_PATH, content: serializeVideos(videos) },
+          ...existing.map((path) => ({ path, delete: true })),
+        ],
+      });
+      return { commitSha, videos, removed, deletedFiles: existing };
+    } catch (err) {
+      if (!err.stale || attempt >= 3) throw err;
+    }
+  }
+}
+
 /** 儲存標籤顏色：content 是整份 tags.json 的文字（serializeTagColors 的結果），分支在途中被更新時自動重試 */
 export async function saveTagColors(gh, { branch, content }) {
   for (let attempt = 1; ; attempt += 1) {

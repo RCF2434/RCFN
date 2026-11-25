@@ -160,7 +160,7 @@ export function convertYtDlpChat(text) {
 
   messages.sort((a, b) => a[0] - b[0]);
   if (!messages.length) {
-    throw new Error(stats.badLines ? '讀不懂這個檔案，請確認是 yt-dlp 下載的 live_chat.json。' : '檔案裡沒有任何聊天訊息。');
+    throw new Error(stats.badLines ? '無法解析此檔案，請確認為 yt-dlp 下載的 live_chat.json。' : '檔案裡沒有任何聊天訊息。');
   }
   stats.messages = messages.length;
   stats.authors = authors.length;

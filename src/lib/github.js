@@ -19,10 +19,10 @@ export class GitHubError extends Error {
 
 function describe(status, detail) {
   if (status === 401) return 'Token 無效或已過期，請重新產生一組。';
-  if (status === 403 && /rate limit/i.test(detail)) return 'GitHub API 次數已達上限，請過一陣子再試。';
+  if (status === 403 && /rate limit/i.test(detail)) return 'GitHub API 次數已達上限，請稍後再試。';
   if (status === 403) return 'Token 權限不足：需要這個 repo 的 Contents「Read and write」權限。';
   if (status === 404) return '找不到 repo、分支或檔案；也可能是 token 沒有這個 repo 的存取權。';
-  if (status === 409) return 'repo 是空的，請先把專案推上 GitHub。';
+  if (status === 409) return 'repo 沒有任何內容，請先將專案推送至 GitHub。';
   return `GitHub 回應錯誤（HTTP ${status}）${detail ? `：${detail}` : ''}`;
 }
 
@@ -71,6 +71,20 @@ export function createGitHub({ owner, repo, token }) {
 
   function readText(path, ref) {
     return request(`/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`, { raw: true });
+  }
+
+  /** 檔案是否存在：列出所在資料夾來判斷，不必下載檔案本身（聊天室紀錄可能很大） */
+  async function pathExists(path, ref) {
+    const slash = path.lastIndexOf('/');
+    const dir = slash === -1 ? '' : path.slice(0, slash);
+    const name = path.slice(slash + 1);
+    try {
+      const list = await request(`/contents/${encodePath(dir)}?ref=${encodeURIComponent(ref)}`);
+      return Array.isArray(list) && list.some((item) => item.type === 'file' && item.name === name);
+    } catch (err) {
+      if (err.status === 404) return false;
+      throw err;
+    }
   }
 
   async function readVideos(ref) {
@@ -155,6 +169,7 @@ export function createGitHub({ owner, repo, token }) {
     repoUrl: `https://github.com/${owner}/${repo}`,
     getHead,
     readText,
+    pathExists,
     readVideos,
     readTagColors,
     commitFiles,

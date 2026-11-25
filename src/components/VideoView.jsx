@@ -7,6 +7,8 @@ import SubtitlePlayer from './SubtitlePlayer.jsx';
 import TagList from './TagList.jsx';
 import ChannelBadge from './ChannelBadge.jsx';
 import NotesList from './NotesList.jsx';
+import TicketTear from './TicketTear.jsx';
+import { getList, listLink, videoListKey } from '../lib/lists.js';
 import { jumpTime, numberNotes } from '../lib/notes.js';
 import { textLang } from '../lib/lang.js';
 
@@ -28,13 +30,14 @@ export default function VideoView({ video, subs, chat, banner }) {
   );
   const playerRef = useRef(null);
   const channels = videoChannels(video);
+  const listKey = videoListKey(video);
 
   return (
     <div className="container video-page">
       {banner}
-      <Link to="/" className="back-link">
+      <Link to={listLink(listKey)} className="back-link">
         <ArrowLeft size={18} aria-hidden="true" />
-        返回列表
+        返回 {getList(listKey).label} 列表
       </Link>
 
       <header className="video-head">
@@ -65,11 +68,11 @@ export default function VideoView({ video, subs, chat, banner }) {
 
       <div className="video-info">
         <section className="panel" aria-labelledby="about-title">
-          <h2 id="about-title" className="panel__title">
-            關於這支影片
-          </h2>
+          <p id="about-title" className="eyebrow">
+            About
+          </p>
           {video.description ? (
-            <p className="panel__text" lang={textLang(video.description)}>
+            <p className="panel__text video-desc" lang={textLang(video.description)}>
               {video.description}
             </p>
           ) : (
@@ -82,14 +85,14 @@ export default function VideoView({ video, subs, chat, banner }) {
         </section>
 
         <section className="panel panel--ticket" aria-labelledby="tags-title">
-          <p className="eyebrow">Tags</p>
-          <h2 id="tags-title" className="panel__title">
-            標籤
-          </h2>
-          {video.tags?.length ? <TagList tags={video.tags} /> : <p className="muted">沒有標籤。</p>}
+          <p id="tags-title" className="eyebrow">
+            Tags
+          </p>
+          {video.tags?.length ? <TagList tags={video.tags} listKey={listKey} /> : <p className="muted">沒有標籤。</p>}
+          {channels.length > 0 && <TicketTear />}
           {channels.length > 0 && (
             <div className="video-channel">
-              <p className="field__label">頻道</p>
+              <p className="eyebrow">Channels</p>
               <ul className="channel-list">
                 {channels.map((channel) => (
                   <li key={channel.id ?? channel.url}>
@@ -110,9 +113,6 @@ export default function VideoView({ video, subs, chat, banner }) {
       {notes.length > 0 && (
         <section className="panel video-notes" aria-labelledby="notes-title">
           <p className="eyebrow">Notes</p>
-          <h2 id="notes-title" className="panel__title">
-            註釋
-          </h2>
           <NotesList notes={notes} onJump={(note) => playerRef.current?.seekTo(note.jumpTo)} />
         </section>
       )}

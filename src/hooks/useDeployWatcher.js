@@ -28,25 +28,25 @@ export function useDeployWatcher(gh, job, setJob) {
           finish(
             run.conclusion === 'success'
               ? { phase: 'done', run }
-              : { phase: 'failed', run, error: `部署沒有成功（${run.conclusion}）。到 GitHub Actions 可以看到失敗原因。` },
+              : { phase: 'failed', run, error: `部署沒有成功（${run.conclusion}）。失敗原因可至 GitHub Actions 查看。` },
           );
           return;
         }
         if (run) finish({ run });
         if (!run && elapsed > NO_RUN_TIMEOUT_MS) {
-          finish({ phase: 'unknown', note: '等了三分鐘還沒看到部署紀錄。請確認 repo 的 Settings → Pages 來源是 GitHub Actions。' });
+          finish({ phase: 'unknown', note: '三分鐘內未偵測到部署紀錄。請確認 repo 的 Settings → Pages 來源為 GitHub Actions。' });
           return;
         }
       } catch (err) {
         if (err.name === 'AbortError') return;
         if (err.status === 401 || err.status === 403 || err.status === 404) {
-          finish({ phase: 'unknown', note: 'Token 沒有讀取 Actions 的權限，這裡看不到部署進度；通常 1–2 分鐘後就會上線。' });
+          finish({ phase: 'unknown', note: 'Token 沒有讀取 Actions 的權限，無法顯示部署進度；通常 1–2 分鐘後上線。' });
           return;
         }
         // 網路暫時不穩，下一輪再試
       }
       if (elapsed > GIVE_UP_MS) {
-        finish({ phase: 'unknown', note: '部署比平常久，請到 GitHub Actions 查看。' });
+        finish({ phase: 'unknown', note: '部署時間較平常長，請至 GitHub Actions 查看。' });
         return;
       }
       timer = window.setTimeout(tick, INTERVAL_MS);

@@ -32,7 +32,7 @@ export default function ChatField({ value, onChange, youtubeId, disabled }) {
     if (!file) return;
     setError(null);
     if (file.size > MAX_INPUT_BYTES) {
-      setError('檔案超過 500 MB，太大了。');
+      setError('檔案超過 500 MB 上限。');
       return;
     }
     setBusy(true);
@@ -44,7 +44,7 @@ export default function ChatField({ value, onChange, youtubeId, disabled }) {
       const json = JSON.stringify(data);
       const size = new Blob([json]).size;
       if (size > MAX_OUTPUT_BYTES) {
-        setError(`整理後仍有 ${formatBytes(size)}，超過 GitHub 的檔案大小限制，沒辦法發布。`);
+        setError(`整理後仍有 ${formatBytes(size)}，超過 GitHub 的檔案大小限制，無法發布。`);
         return;
       }
       onChange({ mode: 'new', path: value.path, previous: value.mode === 'new' ? value.previous : value.mode, json, data, stats, size, fileName: file.name });
@@ -74,7 +74,7 @@ export default function ChatField({ value, onChange, youtubeId, disabled }) {
       />
       <Upload size={24} aria-hidden="true" />
       <strong>{busy ? '讀取並轉換中…' : value.mode === 'none' ? '選擇 live_chat.json' : '換一個 live_chat.json'}</strong>
-      <span>或把檔案拖曳到這裡</span>
+      <span>或將檔案拖曳至此</span>
     </label>
   );
 
@@ -141,10 +141,10 @@ export default function ChatField({ value, onChange, youtubeId, disabled }) {
         </div>
       )}
       {value.mode === 'new' && value.size > WARN_OUTPUT_BYTES && (
-        <p className="field__hint">檔案比較大，觀眾打開影片頁時要多下載 {formatBytes(value.size)}（GitHub Pages 會壓縮傳送，實際會小很多）。</p>
+        <p className="field__hint">檔案較大，開啟影片頁時需額外下載 {formatBytes(value.size)}（GitHub Pages 會壓縮傳送，實際傳輸量小很多）。</p>
       )}
       {value.mode === 'new' && value.stats.badLines > 0 && (
-        <p className="field__hint">有 {value.stats.badLines} 行讀不懂，已略過。</p>
+        <p className="field__hint">有 {value.stats.badLines} 行無法解析，已略過。</p>
       )}
 
       {fileInput}
@@ -161,7 +161,7 @@ export default function ChatField({ value, onChange, youtubeId, disabled }) {
             安裝 <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noreferrer">yt-dlp</a>，在終端機執行：
             <pre className="chat-field__command mono">{command}</pre>
           </li>
-          <li>會得到一個檔名結尾是 <code className="mono">.live_chat.json</code> 的檔案，選擇它即可。</li>
+          <li>執行後會產生檔名結尾為 <code className="mono">.live_chat.json</code> 的檔案，選擇該檔案即可。</li>
           <li>只會保留文字：時間、名字、身分（直播主、管理員、會員）、訊息、超級留言金額；不存頭貼和圖片，自訂表情會變成 :代碼:。</li>
           <li>yt-dlp 是抓取 YouTube 的資料，不是官方提供的管道，請自行斟酌使用。</li>
         </ol>

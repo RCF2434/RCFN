@@ -4,7 +4,7 @@ import Toggle from '../Toggle.jsx';
 
 const NEW_TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 
-const DEFAULT_INTRO = '發布時需要寫入這個網站的 GitHub repo。只想先預覽字幕效果，可以跳過這步，直接往下填。';
+const DEFAULT_INTRO = '發布時需要寫入本網站的 GitHub repo。僅預覽字幕效果時可略過此步驟。';
 
 /** 連線 GitHub。連線成功後收合成一行摘要。 */
 export default function ConnectionPanel({ settings, conn, onConnect, onDisconnect, step = 1, intro = DEFAULT_INTRO }) {
@@ -74,7 +74,7 @@ export default function ConnectionPanel({ settings, conn, onConnect, onDisconnec
       <div>
         <p className="eyebrow">{step ? `Step ${step} · ` : ''}GitHub</p>
         <h2 id={`${uid}-title`} className="panel__title">
-          連線你的 repo
+          連線 GitHub repo
         </h2>
       </div>
       <p className="panel__text muted">{intro}</p>
@@ -130,10 +130,10 @@ export default function ConnectionPanel({ settings, conn, onConnect, onDisconnec
             {...bind('token')}
           />
           <Toggle checked={draft.remember} onChange={(remember) => setDraft((d) => ({ ...d, remember }))}>
-            記住在這個瀏覽器
+            在此瀏覽器記住 token
           </Toggle>
           <p className="field__hint">
-            不勾的話，關掉分頁就會清除。共用電腦請不要勾。token 只會送到 api.github.com。
+            未勾選時，關閉分頁後即清除。共用電腦請勿勾選。token 只會傳送至 api.github.com。
           </p>
         </div>
 
@@ -144,7 +144,7 @@ export default function ConnectionPanel({ settings, conn, onConnect, onDisconnec
           </summary>
           <ol>
             <li>
-              打開 GitHub 的{' '}
+              開啟 GitHub 的{' '}
               <a href={NEW_TOKEN_URL} target="_blank" rel="noreferrer">
                 新增 fine-grained token 頁面
                 <ExternalLink size={13} aria-hidden="true" />
@@ -157,7 +157,7 @@ export default function ConnectionPanel({ settings, conn, onConnect, onDisconnec
               Permissions → Repository permissions：<strong>Contents</strong> 設 Read and write；
               <strong>Actions</strong> 設 Read-only（選填，用來顯示部署進度）。
             </li>
-            <li>建立後複製 token，貼到上面。token 只會顯示一次。</li>
+            <li>建立後複製 token，貼入上方欄位。token 僅顯示一次。</li>
           </ol>
         </details>
 

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { ExternalLink, KeyRound, Plus, RefreshCw, X } from 'lucide-react';
+import { ExternalLink, GripVertical, KeyRound, Plus, RefreshCw, X } from 'lucide-react';
 import { fetchChannel, loadApiKey, parseChannelInput, saveApiKey } from '../../lib/youtubeApi.js';
 import ChannelBadge from '../ChannelBadge.jsx';
 
@@ -20,14 +20,36 @@ export function channelRows(channels) {
 export function channelProblems(rows) {
   const problems = [];
   if (rows.some((r) => r.status === 'loading')) problems.push('頻道資料讀取中');
-  if (rows.some((r) => r.status === 'error')) problems.push('修正頻道連結，或刪掉那一列');
+  if (rows.some((r) => r.status === 'error')) problems.push('修正頻道連結，或移除該列');
   const ids = rows.filter((r) => r.status === 'ready').map((r) => r.channel.id);
   if (new Set(ids).size !== ids.length) problems.push('同一個頻道加了兩次');
   return problems;
 }
 
+/** 拖曳把手：滑鼠／觸控拖曳，或聚焦後用上下鍵移動 */
+function DragHandle({ label, onPointerDown, onMove, disabled }) {
+  return (
+    <button
+      type="button"
+      className="drag-handle"
+      onPointerDown={onPointerDown}
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          onMove(event.key === 'ArrowUp' ? -1 : 1);
+        }
+      }}
+      disabled={disabled}
+      aria-label={`${label}：拖曳或按上下鍵調整順序`}
+      title="拖曳調整順序"
+    >
+      <GripVertical size={18} aria-hidden="true" />
+    </button>
+  );
+}
+
 /** 一列頻道連結：貼上後自動查名稱與頭貼 */
-function ChannelRow({ row, apiKey, onChange, onRemove, disabled, index }) {
+function ChannelRow({ row, apiKey, onChange, onRemove, disabled, index, handle, dragging }) {
   const uid = useId();
   const timer = useRef(0);
   const controller = useRef(null);
@@ -74,7 +96,9 @@ function ChannelRow({ row, apiKey, onChange, onRemove, disabled, index }) {
   }, [apiKey]);
 
   return (
-    <li className="channel-row">
+    <li className={`channel-row${dragging ? ' is-dragging' : ''}`} data-key={row.key}>
+      <div className="channel-row__main">
+      {handle}
       {row.status === 'ready' ? (
         <div className="channel-field__preview">
           <ChannelBadge channel={row.channel} link={false} />
@@ -84,7 +108,7 @@ function ChannelRow({ row, apiKey, onChange, onRemove, disabled, index }) {
             onClick={() => lookup(row.link)}
             disabled={disabled || !apiKey}
             aria-label={`重新讀取 ${row.channel.name}`}
-            title="重新讀取（頻道換了名稱或頭貼時）"
+            title="重新讀取（頻道名稱或頭貼變更時）"
           >
             <RefreshCw size={16} />
           </button>
@@ -125,6 +149,7 @@ function ChannelRow({ row, apiKey, onChange, onRemove, disabled, index }) {
           </button>
         </div>
       )}
+      </div>
       {row.status === 'loading' && <p className="field__hint">讀取頻道中…</p>}
       {row.status === 'error' && (
         <p className="field__hint field__hint--error" role="alert">
@@ -192,7 +217,7 @@ function ApiKeySetting({ apiKey, onSave }) {
           </button>
         )}
       </div>
-      <p className="field__hint">只存在這個瀏覽器，只會送到 googleapis.com。</p>
+      <p className="field__hint">僅儲存於此瀏覽器，只會傳送至 googleapis.com。</p>
       <details className="help">
         <summary>
           <KeyRound size={16} aria-hidden="true" />
@@ -200,7 +225,7 @@ function ApiKeySetting({ apiKey, onSave }) {
         </summary>
         <ol>
           <li>
-            到 Google Cloud 建立（或選一個）專案，打開{' '}
+            於 Google Cloud 建立（或選擇既有）專案，開啟{' '}
             <a href={CONSOLE_URL} target="_blank" rel="noreferrer">
               YouTube Data API v3
               <ExternalLink size={13} aria-hidden="true" />
@@ -216,16 +241,16 @@ function ApiKeySetting({ apiKey, onSave }) {
             → 建立憑證 → API 金鑰。
           </li>
           <li>
-            建議加上限制：「應用程式限制」選<strong>網站</strong>，加入{' '}
-            <code className="mono">http://localhost:5173/*</code>。不要選「IP 位址」：那是給伺服器用的，不能填
-            localhost；這裡的金鑰是從瀏覽器送出，要用「網站」限制。
+            建議加上限制：「應用程式限制」選擇<strong>網站</strong>，並加入{' '}
+            <code className="mono">http://localhost:5173/*</code>。請勿選擇「IP 位址」：該選項供伺服器使用，無法填入
+            localhost；此金鑰由瀏覽器送出，需使用「網站」限制。
           </li>
           <li>
-            埠號以 <code className="mono">npm run dev</code> 印出的網址為準（5173 被占用時會換成 5174
-            等）；用 <code className="mono">127.0.0.1</code> 開啟的話也要另外加入。
+            埠號以 <code className="mono">npm run dev</code> 顯示的網址為準（5173 被占用時會改用 5174
+            等）；以 <code className="mono">127.0.0.1</code> 開啟時也需另外加入。
           </li>
-          <li>「API 限制」選限制金鑰，只勾 YouTube Data API v3。</li>
-          <li>免費額度每天一萬次，查一個頻道用 1 次。</li>
+          <li>「API 限制」選擇限制金鑰，僅勾選 YouTube Data API v3。</li>
+          <li>免費額度為每日一萬次，查詢一個頻道使用 1 次。</li>
         </ol>
       </details>
     </div>
@@ -243,11 +268,58 @@ export default function ChannelField({ value, onChange, disabled }) {
   const update = (key, row) => onChange((list) => list.map((r) => (r.key === key ? row : r)));
   const remove = (key) => onChange((list) => list.filter((r) => r.key !== key));
   const add = () => onChange((list) => [...list, emptyRow()]);
+  /** 把某一列往上（-1）或往下（+1）移一格 */
+  const move = (key, step) =>
+    onChange((list) => {
+      const from = list.findIndex((r) => r.key === key);
+      const to = from + step;
+      if (from < 0 || to < 0 || to >= list.length) return list;
+      const next = [...list];
+      next.splice(to, 0, ...next.splice(from, 1));
+      return next;
+    });
+
+  /*
+   * ---------- 拖曳排序 ----------
+   * 指標越過其他列的中線，就把被拖的那列移到那裡。
+   * 監聽 window 而不是把手：列在 DOM 裡被移動時，把手會失去 pointer capture。
+   */
+  const listRef = useRef(null);
+  const [dragKey, setDragKey] = useState(null);
+  const startDrag = (key) => (event) => {
+    if (event.button !== 0 || disabled) return;
+    event.preventDefault();
+    event.currentTarget.focus();
+    setDragKey(key);
+    const onPointerMove = (e) => {
+      const items = [...(listRef.current?.children ?? [])];
+      const index = items.findIndex((el) => el.dataset.key === String(key));
+      if (index < 0) return;
+      // 其他列中，中線在指標上方的有幾列 → 被拖的那列該在的位置
+      const target = items.filter((el, i) => {
+        if (i === index) return false;
+        const rect = el.getBoundingClientRect();
+        return rect.top + rect.height / 2 < e.clientY;
+      }).length;
+      if (target !== index) move(key, target - index);
+    };
+    const end = () => {
+      setDragKey(null);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    };
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+  };
+
+  const sortable = rows.length > 1;
 
   return (
     <div className="channel-field">
       {rows.length > 0 && (
-        <ul className="channel-rows">
+        <ul className={`channel-rows${dragKey !== null ? ' is-sorting' : ''}`} ref={listRef}>
           {rows.map((row, index) => (
             <ChannelRow
               key={row.key}
@@ -257,6 +329,17 @@ export default function ChannelField({ value, onChange, disabled }) {
               disabled={disabled}
               onChange={(next) => update(row.key, next)}
               onRemove={() => remove(row.key)}
+              dragging={dragKey === row.key}
+              handle={
+                sortable && (
+                  <DragHandle
+                    label={row.status === 'ready' ? row.channel.name : `第 ${index + 1} 個頻道`}
+                    onPointerDown={startDrag(row.key)}
+                    onMove={(step) => move(row.key, step)}
+                    disabled={disabled}
+                  />
+                )
+              }
             />
           ))}
         </ul>
@@ -270,7 +353,8 @@ export default function ChannelField({ value, onChange, disabled }) {
         <p className="field__hint">最多 {MAX_CHANNELS} 個頻道。</p>
       )}
       <p className="field__hint">
-        貼上頻道首頁的連結，或直接輸入 @帳號，會自動帶出頭貼和名稱。顯示順序就是這裡的順序。
+        貼上頻道首頁的連結或輸入 @帳號，會自動帶入頭貼與名稱。影片頁依此處的順序顯示
+        {sortable ? '，拖曳左側把手可調整順序。' : '。'}
       </p>
       <ApiKeySetting
         apiKey={apiKey}

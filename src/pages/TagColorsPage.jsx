@@ -1,10 +1,11 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, RotateCcw, Search, Send } from 'lucide-react';
 import { PALETTE } from '../lib/speakers.js';
 import { collectTags } from '../lib/tags.js';
 import { TAG_COLORS, sameColor, serializeTagColors, tagColor, tagColorProps } from '../lib/tagColors.js';
-import { HEX_RE, MIN_CONTRAST, TAG_BACKGROUNDS, contrastRatio } from '../lib/contrast.js';
+import { TAG_BACKGROUNDS } from '../lib/contrast.js';
+import HexField from '../components/publish/HexField.jsx';
 import { publicSiteUrl, saveTagColors } from '../lib/publish.js';
 import { videos as bundledVideos } from '../lib/videos.js';
 import { useGitHubConnection } from '../hooks/useGitHubConnection.js';
@@ -19,49 +20,12 @@ const OPTIONS = [DEFAULT_OPTION, ...PALETTE];
 const CUSTOM = 'custom';
 const SEARCH_THRESHOLD = 12;
 
-/** 一個色碼欄位：色盤＋可直接輸入的色碼，並在實際底色上預覽、顯示對比 */
-function HexField({ label, value, onChange, background, tag }) {
-  const id = useId();
-  const [text, setText] = useState(value);
-  useEffect(() => setText(value), [value]);
-  const ratio = contrastRatio(value, background);
-  const low = ratio !== null && ratio < MIN_CONTRAST;
-
+/** 標籤在實際底色上的樣子，放在色碼欄位旁 */
+function TagPreview({ tag, color, background }) {
   return (
-    <div className="hex-field">
-      <label htmlFor={id} className="field__label">
-        {label}
-      </label>
-      <div className="hex-field__row">
-        <input
-          type="color"
-          className="hex-field__picker"
-          value={value.toLowerCase()}
-          onChange={(event) => onChange(event.target.value.toUpperCase())}
-          aria-label={`${label}：用色盤選`}
-        />
-        <input
-          id={id}
-          className="input mono"
-          value={text}
-          maxLength={7}
-          spellCheck={false}
-          autoComplete="off"
-          onChange={(event) => {
-            setText(event.target.value);
-            const hex = event.target.value.trim().replace(/^#?/, '#');
-            if (HEX_RE.test(hex)) onChange(hex.toUpperCase());
-          }}
-          onBlur={() => setText(value)}
-        />
-        <span className="hex-field__preview" style={{ background, color: value }} aria-hidden="true">
-          #{tag}
-        </span>
-      </div>
-      <p className={`field__hint${low ? ' field__hint--error' : ''}`}>
-        對比 {ratio ? ratio.toFixed(1) : '—'}:1{low ? `，低於 ${MIN_CONTRAST}:1，可能看不清楚` : ''}
-      </p>
-    </div>
+    <span className="hex-field__preview" style={{ background, color }} aria-hidden="true">
+      #{tag}
+    </span>
   );
 }
 
@@ -120,16 +84,18 @@ function TagColorRow({ tag, count, colors, onChange, disabled }) {
             label="淺色主題的文字（米色底）"
             value={color.deep}
             background={TAG_BACKGROUNDS.light}
-            tag={tag}
             onChange={(deep) => onChange(tag, { light: color.light, deep })}
-          />
+          >
+            <TagPreview tag={tag} color={color.deep} background={TAG_BACKGROUNDS.light} />
+          </HexField>
           <HexField
             label="深色主題的文字（深灰底）"
             value={color.light}
             background={TAG_BACKGROUNDS.dark}
-            tag={tag}
             onChange={(light) => onChange(tag, { light, deep: color.deep })}
-          />
+          >
+            <TagPreview tag={tag} color={color.light} background={TAG_BACKGROUNDS.dark} />
+          </HexField>
         </div>
       )}
     </fieldset>
@@ -196,13 +162,13 @@ export default function TagColorsPage() {
   async function save() {
     if (problems.length || busy) return;
     const next = draft;
-    setJob({ phase: 'committing', path: '/', openLabel: '打開影片列表' });
+    setJob({ phase: 'committing', path: '/', openLabel: '開啟影片列表' });
     try {
       const content = serializeTagColors(next);
       const { commitSha } = await saveTagColors(conn.gh, { branch: settings.branch, content });
       setConn((c) => ({ ...c, tagColors: JSON.parse(content), headSha: commitSha }));
       setDraft(null);
-      setJob({ phase: 'deploying', commitSha, startedAt: Date.now(), path: '/', openLabel: '打開影片列表' });
+      setJob({ phase: 'deploying', commitSha, startedAt: Date.now(), path: '/', openLabel: '開啟影片列表' });
     } catch (err) {
       setJob({ phase: 'failed', path: '/', error: err.message });
     }
@@ -221,8 +187,8 @@ export default function TagColorsPage() {
         <p className="eyebrow">Backstage</p>
         <h1>標籤顏色</h1>
         <p className="lead">
-          幫每個標籤選一個文字顏色，列表頁、影片頁和搜尋框裡的標籤都會套用。儲存後會寫進 GitHub repo
-          並重新部署。顏色在淺色與深色主題會自動換成適合的深淺，可以用右上角的按鈕切換主題確認。
+          設定每個標籤的文字顏色，列表頁、影片頁與搜尋框中的標籤都會套用。儲存後會寫入 GitHub repo
+          並重新部署。顏色會依淺色與深色主題自動調整深淺，可透過右上角的按鈕切換主題確認。
         </p>
       </header>
 
@@ -255,7 +221,7 @@ export default function TagColorsPage() {
           )}
 
           {rows.length === 0 ? (
-            <p className="muted">還沒有任何影片有標籤。到發布頁幫影片加上標籤後，就可以在這裡設定顏色。</p>
+            <p className="muted">目前沒有任何影片設定標籤。於發布頁為影片加上標籤後，即可在此設定顏色。</p>
           ) : shown.length === 0 ? (
             <p className="muted">沒有符合「{filter.trim()}」的標籤。</p>
           ) : (
