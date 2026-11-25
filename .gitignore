@@ -1,0 +1,18 @@
+# 相依套件與建置結果
+node_modules
+dist
+
+# 本機設定與機密（API 金鑰、token 不要進 repo）
+*.local
+.env
+.env.*
+!.env.example
+
+# 記錄檔與系統檔
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea

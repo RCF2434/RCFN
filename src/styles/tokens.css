@@ -1,0 +1,98 @@
+/* ===== Luxury Neumorphic Estate design tokens ===== */
+:root {
+  --beige: #f5f0e8;
+  --gold: #c9a84c;
+  --charcoal: #1a1a1a;
+  --warm-grey: #8b8680;
+  --success: #4c8c5a;
+  --warning: #c98a2e;
+  --error: #c0453b;
+  --error-text: #a8372e; /* 錯誤文字用加深版（5.7:1） */
+  --info: #4c77a8;
+
+  --page-bg: #f5f0e8;
+  --surface: #f5f0e8;
+  --text: #333333;
+  --text-muted: #6b665f; /* design.md 的 Warm Grey 當文字只有 3.2:1，改用加深版（5.0:1） */
+  --accent-text: #7a5f14; /* 金色文字一律用深金，避免金字配米底 */
+  --sh-light: #ffffff;
+  --sh-dark: #c4bfb7;
+
+  --r-sm: 5px;
+  --r-md: 10px;
+  --r-lg: 42px;
+
+  /* 間距（gap）：由小到大，改這裡會同步影響全站 */
+  --space-2xs: 0.25rem; /* 色點之間、小圖示與文字 */
+  --space-xs: 0.4rem; /* 標籤與輸入框、返回連結 */
+  --space-sm: 0.6rem; /* 按鈕圖示與文字、說話人標籤、卡片內文 */
+  --space-md: 1rem; /* 面板內容、工具列、表單欄位之間 */
+  --space-lg: 1rem; /* 導覽連結、工具列左右 */
+  --space-xl: 1.5rem; /* 卡片格線、頁面區塊之間 */
+
+  /* 字幕離影片底部的距離：播放中 / 暫停時（暫停要讓開 YouTube 的進度條） */
+  --sub-bottom: max(7%, 36px);
+  --sub-bottom-paused: max(10%, 80px);
+
+  /* 門票撕線：暗線在上、亮線在下，形成壓印的凹痕 */
+  --tear-weight: 1px; /* 線的粗細（暗線、亮線各一條） */
+  --tear-offset: 1px; /* 暗線與亮線之間的距離；越大凹痕看起來越深 */
+  --tear-dash: 12px; /* 短線段長度 */
+  --tear-gap: 5px; /* 線段之間的間隔 */
+
+  /* 全站只用 Noto Sans TC 與 Noto Sans JP：繁中優先，TC 沒有的字（日文假名等）由 JP 補上 */
+  --font-display: 'Noto Sans TC', 'Noto Sans JP', sans-serif;
+  --font-body: 'Noto Sans TC', 'Noto Sans JP', sans-serif;
+  --font-mono: 'Noto Sans TC', 'Noto Sans JP', sans-serif; /* 不另用等寬字體，數字改用等寬數字對齊 */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --page-bg: #2a2824;
+  --surface: #2a2824;
+  --text: #ede7dc;
+  --text-muted: #a8a39a;
+  --accent-text: #c9a84c;
+  --error-text: #f0857b;
+  --sh-light: #363430;
+  --sh-dark: #1e1c19;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --page-bg: #2a2824;
+    --surface: #2a2824;
+    --text: #ede7dc;
+    --text-muted: #a8a39a;
+    --accent-text: #c9a84c;
+    --error-text: #f0857b;
+    --sh-light: #363430;
+    --sh-dark: #1e1c19;
+    color-scheme: dark;
+  }
+}
+
+/* 局部深色區塊（全螢幕播放器） */
+.scheme-dark {
+  --page-bg: #1a1a1a;
+  --surface: #2a2824;
+  --text: #ede7dc;
+  --text-muted: #a8a39a;
+  --accent-text: #c9a84c;
+  --error-text: #f0857b;
+  --sh-light: #363430;
+  --sh-dark: #1e1c19;
+  color-scheme: dark;
+}
+
+/* 陰影組合要在覆寫變數的同一個元素上重新宣告，才會用到該區塊的陰影色 */
+:root,
+.scheme-dark {
+  --convex: -6px -6px 16px var(--sh-light), 6px 6px 16px var(--sh-dark);
+  --convex-strong: -9px -9px 22px var(--sh-light), 9px 9px 22px var(--sh-dark);
+  --concave: inset -4px -4px 10px var(--sh-light), inset 4px 4px 10px var(--sh-dark);
+  --flat: -3px -3px 8px var(--sh-light), 3px 3px 8px var(--sh-dark);
+}
