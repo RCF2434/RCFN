@@ -1,36 +1,5 @@
 [
   {
-    "id": "big-buck-bunny",
-    "youtubeId": "aqz-KE-bpKQ",
-    "title": "Big Buck Bunny",
-    "uploader": {
-      "name": "Blender",
-      "url": "https://www.youtube.com/@BlenderOfficial"
-    },
-    "description": "Blender 基金會的開放電影。這裡掛的是三位說話人的示範字幕，用來展示依說話人分色與樣式切換，不是影片原本的對白。",
-    "subtitle": "subtitles/big-buck-bunny.srt",
-    "tags": [
-      "動畫",
-      "示範",
-      "Blender"
-    ],
-    "speakers": {
-      "旁白": "gold",
-      "小安": "blue",
-      "阿蓓": "green"
-    },
-    "notes": [
-      {
-        "time": 2,
-        "text": "這是第一則示範註釋。字幕後面的（*1）對應這裡，點左邊的編號會跳回這個時間。"
-      },
-      {
-        "time": 13,
-        "text": "第二則示範註釋：同一句字幕裡有兩位說話人時，（*2）會標在那句字幕的最後一行。"
-      }
-    ]
-  },
-  {
     "id": "sintel",
     "youtubeId": "eRsGyueVLvQ",
     "title": "Sintel",
