@@ -927,6 +927,18 @@ main {
   white-space: pre-line;
 }
 
+/* 說明裡 [文字](連結) 轉成的超連結 */
+.inline-link {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+.inline-link:hover {
+  color: var(--text);
+}
+
 .meta {
   display: grid;
   grid-template-columns: repeat(3, auto);

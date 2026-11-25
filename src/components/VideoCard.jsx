@@ -5,6 +5,7 @@ import { hasTag } from '../lib/tags.js';
 import { tagColorProps } from '../lib/tagColors.js';
 import TicketTear from './TicketTear.jsx';
 import { textLang } from '../lib/lang.js';
+import { stripLinks } from '../lib/richText.js';
 
 /**
  * 整張卡片可點進影片頁：標題連結用 ::after 撐滿卡片（不能把標籤按鈕包在連結裡）。
@@ -30,7 +31,7 @@ export default function VideoCard({ video, index, layout = 'grid', selectedTags 
               {video.title}
             </Link>
           </h2>
-          {layout === 'list' && video.description && <p className="video-card__desc" lang={textLang(video.description)}>{video.description}</p>}
+          {layout === 'list' && video.description && <p className="video-card__desc" lang={textLang(video.description)}>{stripLinks(video.description)}</p>}
           {tags.length > 0 && (
             <ul className="tags video-card__tags" aria-label="標籤">
               {tags.map((tag) => {

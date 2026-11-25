@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const SITE = 'RCFN · 非官方字幕';
+const SITE = 'RCFN · にじさんじ非官方字幕';
 
 export function useDocumentTitle(title) {
   useEffect(() => {

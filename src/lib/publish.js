@@ -35,7 +35,7 @@ export async function publishVideo(gh, { branch, entry, subtitleText, mode, extr
       const commitSha = await gh.commitFiles({
         branch,
         head,
-        message: `${verb}影片：${entry.title}\n\n由RCFN · 非官方字幕的發布頁送出。`,
+        message: `${verb}影片：${entry.title}\n\n由 RCFN · にじさんじ非官方字幕的發布頁送出。`,
         files: [
           { path: `public/${entry.subtitle}`, content: subtitleText },
           { path: VIDEOS_PATH, content: serializeVideos(videos) },
@@ -81,7 +81,7 @@ export async function deleteVideo(gh, { branch, id }) {
       const commitSha = await gh.commitFiles({
         branch,
         head,
-        message: `刪除影片：${removed.title}\n\n由RCFN · 非官方字幕的發布頁送出。`,
+        message: `刪除影片：${removed.title}\n\n由 RCFN · にじさんじ非官方字幕的發布頁送出。`,
         files: [
           { path: VIDEOS_PATH, content: serializeVideos(videos) },
           ...existing.map((path) => ({ path, delete: true })),
@@ -102,7 +102,7 @@ export async function saveTagColors(gh, { branch, content }) {
       const commitSha = await gh.commitFiles({
         branch,
         head,
-        message: '更新標籤顏色\n\n由RCFN · 非官方字幕的標籤顏色頁送出。',
+        message: '更新標籤顏色\n\n由 RCFN · にじさんじ非官方字幕的標籤顏色頁送出。',
         files: [{ path: TAGS_PATH, content }],
       });
       return { commitSha };
@@ -114,9 +114,10 @@ export async function saveTagColors(gh, { branch, content }) {
 
 /** 網站公開網址：在 GitHub Pages（或自訂網域）上就用目前網址，本機開發時推算 github.io 網址 */
 export function publicSiteUrl(owner, repo) {
-  const { hostname, origin, pathname } = window.location;
+  const { hostname, origin } = window.location;
   const local = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]' || hostname.endsWith('.localhost');
-  if (!local) return origin + pathname;
+  // 網址不含 #，目前頁面的 pathname 會帶著路由（/RCFN/publish），網站根目錄要用 BASE_URL
+  if (!local) return origin + import.meta.env.BASE_URL;
   const host = `${owner.toLowerCase()}.github.io`;
   return repo.toLowerCase() === host ? `https://${host}/` : `https://${host}/${repo}/`;
 }

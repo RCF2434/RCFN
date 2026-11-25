@@ -1,4 +1,4 @@
-# RCFN · 非官方字幕
+# RCFN · にじさんじ非官方字幕
 
 在 YouTube 嵌入影片上顯示外掛字幕，並依說話人分色；觀眾可切換三種字幕樣式。本專案為純靜態網站（React + Vite），可直接部署至 GitHub Pages。視覺風格依照 `Luxury Neumorphic Estate.design.md`。
 
@@ -8,11 +8,11 @@
 - **ASS 字幕匯入**：發布頁可上傳 .ass／.ssa，自動轉為 SRT，`Name` 欄位作為說話人
 - **依說話人分色**：每位說話人對應固定顏色，可於設定檔指定或自訂色碼，未指定者自動配色
 - **三種字幕樣式**：黑底彩字（色塊）／彩框白字（彩色描邊）／白框彩字（白色描邊），選擇結果儲存於瀏覽器
-- **網頁發布**：於 `/#/publish` 依步驟填寫影片資料、上傳字幕並設定顏色，即時預覽後寫入 GitHub repo 並自動部署
+- **網頁發布**：於 `/publish` 依步驟填寫影片資料、上傳字幕並設定顏色，即時預覽後寫入 GitHub repo 並自動部署
 - **含字幕的全螢幕**：播放器下方的全螢幕按鈕會一併放大影片、字幕與工具列
 - **聊天室重播**：直播錄檔可附上聊天紀錄，依播放時間同步顯示
 - **註釋**：可於指定時間加上註釋，字幕上標示編號，影片頁下方列出全部註釋
-- **兩個影片列表**：「にじさんじ」（`/#/`）與「NIJISANJI EN」（`/#/en`），由頁首切換。每支影片只屬於其中一個列表
+- **兩個影片列表**：「にじさんじ」（`/`）與「NIJISANJI EN」（`/en`），由頁首切換。每支影片只屬於其中一個列表
 - **模糊搜尋**：列表頁可搜尋標題、標籤、說話人與說明（Fuse.js），搜尋與標籤篩選僅限目前的列表。容許拼字錯誤，全形半形、大小寫、平假名片假名均視為相同；以空白分隔的多個詞須全部符合
 - 淺色／深色主題
 
@@ -27,14 +27,14 @@ npm run build      # 會先自動執行 check:subs
 
 ## 透過網頁發布影片（建議）
 
-發布頁與管理頁**僅在本機開發時**提供：執行 `npm run dev` 後，由頁尾的「發布影片」（`/#/publish`）新增影片，「管理影片」（`/#/manage`）編輯或刪除已發布的影片。上線版本不包含這些頁面、連結及其程式碼，觀眾無法存取。如需在上線版本提供，可於建置時設定環境變數 `VITE_PUBLISH_PAGE=true`。
+發布頁與管理頁**僅在本機開發時**提供：執行 `npm run dev` 後，由頁尾的「發布影片」（`/publish`）新增影片，「管理影片」（`/manage`）編輯或刪除已發布的影片。上線版本不包含這些頁面、連結及其程式碼，觀眾無法存取。如需在上線版本提供，可於建置時設定環境變數 `VITE_PUBLISH_PAGE=true`。
 
 本機發布同樣會直接寫入 GitHub repo 並觸發部署，不需先 push。首次使用需填寫 GitHub 帳號與 repo 名稱，之後會自動帶入。
 
 發布分為四個步驟，完成一個步驟後按「下一步」繼續，也可透過上方的步驟列切換：
 
 1. **影片與聊天室**
-   - **影片資料**：所屬列表（にじさんじ／NIJISANJI EN 擇一，必填）、YouTube 網址（支援 watch、youtu.be、shorts、embed）、標題、說明、標籤、頻道、網址代稱。標籤以 Enter 或逗號加入，下方會列出其他影片使用過的標籤，點選即可加入；標籤可拖曳調整順序。說明中的換行會保留至影片頁。
+   - **影片資料**：所屬列表（にじさんじ／NIJISANJI EN 擇一，必填）、YouTube 網址（支援 watch、youtu.be、shorts、embed）、標題、說明、標籤、頻道、網址代稱。標籤以 Enter 或逗號加入，下方會列出其他影片使用過的標籤，點選即可加入；標籤可拖曳調整順序。說明中的換行會保留至影片頁，`[文字](連結)` 會顯示為超連結（開新分頁，僅限 http／https）。
    - **頻道（選填，最多 5 個）**：貼上 YouTube 頻道連結（`https://www.youtube.com/@帳號`、`/channel/UC…`，或輸入 `@帳號`），透過 YouTube Data API 帶入頭貼與名稱，顯示於影片頁標籤下方；可拖曳左側把手調整順序。此功能需要 API 金鑰：於 Google Cloud 啟用 YouTube Data API v3 → 憑證 → 建立 API 金鑰。「應用程式限制」請選擇**網站**並加入 `http://localhost:5173/*`（埠號以 `npm run dev` 顯示的為準）；「IP 位址」限制無法填入 localhost，不適用於此情境。金鑰僅儲存於瀏覽器；頻道資料於發布時查詢一次並存入 `videos.json`，觀眾瀏覽時不會使用 API 額度。頻道更換頭貼後舊圖可能失效，此時會改為顯示名稱首字，於管理頁「編輯」該影片並重新讀取即可。
    - **聊天室重播（選填）**：直播錄檔可上傳 yt-dlp 下載的聊天紀錄（`yt-dlp --js-runtimes node --skip-download --write-subs --sub-langs live_chat 影片網址`，產生 `*.live_chat.json`；`--js-runtimes node` 讓 yt-dlp 以 Node.js 解析 YouTube，避免缺少 JavaScript 執行環境的警告）。網站會在瀏覽器中轉為純文字精簡格式（時間、名稱、身分、訊息、超級留言金額；不保存頭貼與圖片，自訂表情轉為 `:代碼:`），存至 `public/chats/<id>.json`。影片頁會在播放器右側依播放時間重播聊天室（窄螢幕顯示於影片下方），可由工具列開關，全螢幕時同樣顯示於右側。
 2. **字幕與說話人**
@@ -57,14 +57,14 @@ npm run build      # 會先自動執行 check:subs
 
 ### 管理影片
 
-「管理影片」（`/#/manage`）連線 GitHub 後會列出 repo 中的所有影片，可依列表切換並以標題或網址代稱搜尋。
+「管理影片」（`/manage`）連線 GitHub 後會列出 repo 中的所有影片，可依列表切換並以標題或網址代稱搜尋。
 
-- **編輯**：開啟 `/#/manage/<id>`，以相同的四個步驟修改影片，於第 4 步按「更新到網站」。編輯時每次都從 repo 載入最新內容，不另存草稿（註釋仍有各自的瀏覽器草稿）。
+- **編輯**：開啟 `/manage/<id>`，以相同的四個步驟修改影片，於第 4 步按「更新到網站」。編輯時每次都從 repo 載入最新內容，不另存草稿（註釋仍有各自的瀏覽器草稿）。
 - **刪除**：確認後，`videos.json` 的該筆資料、字幕檔與聊天室紀錄會在同一個 commit 中刪除；其他影片仍在使用的檔案不會刪除。刪除後只能從 GitHub 的 commit 紀錄還原。
 
 ### 標籤顏色
 
-本機開發時，可透過頁尾的「標籤顏色」（`/#/tag-colors`）設定每個標籤的文字顏色（調色盤七色、自訂色碼，或「預設」不上色）。儲存後寫入 `src/data/tags.json` 並重新部署，列表頁、影片頁與搜尋框中的標籤都會套用。此頁與發布頁共用同一組 GitHub 連線。
+本機開發時，可透過頁尾的「標籤顏色」（`/tag-colors`）設定每個標籤的文字顏色（調色盤七色、自訂色碼，或「預設」不上色）。儲存後寫入 `src/data/tags.json` 並重新部署，列表頁、影片頁與搜尋框中的標籤都會套用。此頁與發布頁共用同一組 GitHub 連線。
 
 也可以直接編輯 `src/data/tags.json`：
 
@@ -102,12 +102,12 @@ npm run build      # 會先自動執行 check:subs
 
 | 欄位 | 必填 | 說明 |
 |---|---|---|
-| `id` | 是 | 用於網址，僅限英數字、`_`、`-`。影片頁網址為 `/#/video/<id>` |
+| `id` | 是 | 用於網址，僅限英數字、`_`、`-`。影片頁網址為 `/video/<id>` |
 | `youtubeId` | 是 | YouTube 網址 `watch?v=` 後的 11 個字元 |
 | `list` | 否 | 所屬列表：`nijisanji`（にじさんじ）或 `nijisanji-en`（NIJISANJI EN）。未設定時歸在 `nijisanji`；填入其他值時 `npm run check:subs` 會報錯 |
 | `title` | 是 | 標題 |
 | `subtitle` | 是 | 相對於 `public/` 的字幕檔路徑 |
-| `description` | 否 | 說明文字，換行會保留 |
+| `description` | 否 | 說明文字，換行會保留；`[文字](https://…)` 會顯示為超連結 |
 | `tags` | 否 | 標籤，字串陣列。顯示於影片頁，列表頁可依標籤篩選 |
 | `speakers` | 否 | 說話人顏色，見下方。名稱須與字幕中的 `<v 名字>` 完全一致 |
 | `thumbnail` | 否 | 自訂縮圖網址，預設使用 YouTube 縮圖 |
@@ -196,7 +196,20 @@ npm run build      # 會先自動執行 check:subs
 2. 於 repo 的 **Settings → Pages → Build and deployment → Source** 選擇 **GitHub Actions**。
 3. 之後每次 push 至 `main`，`.github/workflows/deploy.yml` 會自動建置並部署。網址為 `https://<帳號>.github.io/<repo>/`。
 
-此設計不需事先得知 repo 名稱：Vite 的 `base` 設為 `./`，路由使用 HashRouter（`/#/video/xxx`），重新整理不會出現 404。
+網址不含 `#`（例如 `https://<帳號>.github.io/<repo>/video/<id>`）。GitHub Pages 沒有伺服器端路由，因此建置時（`scripts/sitePages.js`）會：
+
+- 依 GitHub Actions 的 `GITHUB_REPOSITORY` 自動判斷網站路徑（`/<repo>/`；repo 名稱為 `<帳號>.github.io` 時為 `/`），不需手動設定。改用自訂網域時，可設定環境變數 `BASE_PATH` 與 `SITE_URL`。
+- 為首頁、NIJISANJI EN 列表與每支影片各產生一份 HTML（`en/index.html`、`video/<id>/index.html`），其他網址由 `404.html` 載入網站後再顯示正確頁面。
+- 舊格式的 `/#/video/<id>` 連結開啟時會自動轉為新網址。
+
+### 分享預覽
+
+社群平台（Facebook、Discord、X、LINE 等）的分享預覽讀取的是 HTML 中的 Open Graph／X meta，建置時會自動寫入每個頁面：
+
+- **首頁與列表**：標題與說明取自 `index.html` 的 `<title>` 與 `<meta name="description">`，分享圖為 `public/og-image.jpg`（1200×630）。
+- **影片頁**：標題為影片標題，說明取自影片說明（`[文字](連結)` 只保留文字），分享圖為該影片的 YouTube 縮圖（有 `thumbnail` 時改用它）。
+
+平台會快取預覽內容，更新後可能需要一段時間才會顯示新的標題或圖片。
 
 ## 技術說明
 
@@ -222,6 +235,6 @@ src/lib/github.js        GitHub API（讀取 videos.json、寫入 commit、查�
 src/lib/publish.js       發布流程
 src/components/publish/  發布頁的元件
 scripts/check-subtitles.mjs  字幕檢查
+scripts/sitePages.js     建置時的網站路徑、各頁面 HTML 與分享預覽 meta
+public/og-image.jpg      全站分享圖（1200×630）
 ```
-
-示範用的兩支影片為 Blender 基金會的開放電影，所附字幕僅為功能示範，並非影片原本的對白。

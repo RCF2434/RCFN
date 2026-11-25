@@ -8,6 +8,7 @@ import TagList from './TagList.jsx';
 import ChannelBadge from './ChannelBadge.jsx';
 import NotesList from './NotesList.jsx';
 import TicketTear from './TicketTear.jsx';
+import LinkedText from './LinkedText.jsx';
 import { getList, listLink, videoListKey } from '../lib/lists.js';
 import { jumpTime, numberNotes } from '../lib/notes.js';
 import { textLang } from '../lib/lang.js';
@@ -73,7 +74,7 @@ export default function VideoView({ video, subs, chat, banner }) {
           </p>
           {video.description ? (
             <p className="panel__text video-desc" lang={textLang(video.description)}>
-              {video.description}
+              <LinkedText text={video.description} />
             </p>
           ) : (
             <p className="muted">沒有說明。</p>

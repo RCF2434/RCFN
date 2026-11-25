@@ -49,10 +49,11 @@ function CopyLink({ url }) {
 export default function PublishStatus({ job, repoUrl, siteUrl }) {
   if (!job) return null;
   const { phase, commitSha, run } = job;
-  const path = job.path ?? `/video/${job.id}`;
-  const shareUrl = `${siteUrl}#${path}`;
+  const path = job.path ?? `/video/${encodeURIComponent(job.id)}`;
+  // siteUrl 結尾是 /，path 開頭是 /：接起來是 https://帳號.github.io/RCFN/video/xxx
+  const shareUrl = `${siteUrl.replace(/\/$/, '')}${path}`;
   // 加上 ?v= 讓瀏覽器重新載入新版網站，而不是用這一頁已載入的舊版資料
-  const openUrl = commitSha ? `${siteUrl}?v=${commitSha.slice(0, 7)}#${path}` : shareUrl;
+  const openUrl = commitSha ? `${shareUrl}?v=${commitSha.slice(0, 7)}` : shareUrl;
 
   const commitState = phase === 'committing' ? 'active' : commitSha ? 'done' : 'failed';
   const deployState = !commitSha

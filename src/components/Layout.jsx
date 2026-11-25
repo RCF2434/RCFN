@@ -15,7 +15,9 @@ function currentListKey(pathname) {
 }
 
 export default function Layout() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  // GitHub Pages 開啟 en/index.html 這類頁面時網址結尾會多一個 /（/en/），比對前先去掉
+  const pathname = location.pathname.length > 1 ? location.pathname.replace(/\/+$/, '') : location.pathname;
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
@@ -56,7 +58,7 @@ export default function Layout() {
       </main>
       <footer className="site-footer">
         <div className="container site-footer__inner">
-          <span>RCFN · 非官方字幕</span>
+          <span>RCFN · にじさんじ非官方字幕</span>
           {(import.meta.env.DEV || import.meta.env.VITE_PUBLISH_PAGE === 'true') && (
             <>
               <Link to="/publish" className="site-footer__link">

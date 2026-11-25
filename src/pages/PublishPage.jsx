@@ -598,7 +598,11 @@ export default function PublishPage({ editId = null }) {
                 rows={3}
                 value={form.description}
                 onChange={setField('description')}
+                aria-describedby={`${uid}-desc-hint`}
               />
+              <p id={`${uid}-desc-hint`} className="field__hint">
+                換行會保留。超連結寫成 <code className="mono">[文字](https://…)</code>，影片頁會顯示為連結並開新分頁。
+              </p>
             </div>
 
             <div className="field">
@@ -649,7 +653,7 @@ export default function PublishPage({ editId = null }) {
                 />
               )}
               <p id={`${uid}-id-hint`} className="field__hint">
-                影片頁網址會是 <span className="mono">…/#/video/{id || '代稱'}</span>
+                影片頁網址會是 <span className="mono">…/video/{id || '代稱'}</span>
                 {existing ? '，更新時不能改。' : '。預設為影片 ID，可改為容易辨識的英文。'}
               </p>
             </div>

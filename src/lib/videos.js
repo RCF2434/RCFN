@@ -6,7 +6,7 @@ export function findVideo(id) {
   return videos.find((video) => video.id === id) ?? null;
 }
 
-/** BASE_URL 為 './'，字幕檔放在 public/ 底下即可 */
+/** BASE_URL 是網站所在的路徑（本機 /、GitHub Pages /<repo>/），字幕檔放在 public/ 底下即可 */
 export function subtitleUrl(video) {
   return assetUrl(video.subtitle);
 }

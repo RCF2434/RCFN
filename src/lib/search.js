@@ -8,6 +8,7 @@
  * 搜尋字用空白分開時，每個詞都要符合（不限順序）。
  */
 import Fuse from 'fuse.js';
+import { stripLinks } from './richText.js';
 
 const KATAKANA = /[ァ-ヶ]/g; // ァ–ヶ，減 0x60 就是對應的平假名 ぁ–ゖ
 
@@ -39,7 +40,7 @@ export function createVideoSearch(videos) {
   const docs = videos.map((video, index) => ({
     index,
     title: normalizeForSearch(video.title),
-    description: normalizeForSearch(video.description),
+    description: normalizeForSearch(stripLinks(video.description)), // [文字](連結) 只搜文字
     tags: (video.tags ?? []).map(normalizeForSearch),
     speakers: Object.keys(video.speakers ?? {}).map(normalizeForSearch),
   }));

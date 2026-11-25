@@ -31,7 +31,7 @@ export function clearDraft() {
 
 /** 發布頁：開預覽分頁（同名視窗，重複按只會切過去） */
 export function openPreview() {
-  const url = `${window.location.pathname}${window.location.search}#/preview`;
+  const url = `${import.meta.env.BASE_URL}preview`;
   const win = window.open(url, PREVIEW_WINDOW);
   win?.focus();
 }
