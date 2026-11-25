@@ -216,9 +216,15 @@ function ApiKeySetting({ apiKey, onSave }) {
             → 建立憑證 → API 金鑰。
           </li>
           <li>
-            建議加上限制：應用程式限制選「網站」，加入 <code className="mono">http://localhost:5173/*</code>；API
-            限制只勾 YouTube Data API v3。
+            建議加上限制：「應用程式限制」選<strong>網站</strong>，加入{' '}
+            <code className="mono">http://localhost:5173/*</code>。不要選「IP 位址」：那是給伺服器用的，不能填
+            localhost；這裡的金鑰是從瀏覽器送出，要用「網站」限制。
           </li>
+          <li>
+            埠號以 <code className="mono">npm run dev</code> 印出的網址為準（5173 被占用時會換成 5174
+            等）；用 <code className="mono">127.0.0.1</code> 開啟的話也要另外加入。
+          </li>
+          <li>「API 限制」選限制金鑰，只勾 YouTube Data API v3。</li>
           <li>免費額度每天一萬次，查一個頻道用 1 次。</li>
         </ol>
       </details>
