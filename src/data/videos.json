@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "id": "UPzqeJfj7-k",
+    "youtubeId": "UPzqeJfj7-k",
+    "list": "nijisanji",
+    "title": "【全員見て】この動画を見れば安心して山田の配信を楽しめます【にじさんじ / 山田龍一郎】",
+    "description": "みなさん必見、「リスナー初心者講座」の切り抜きです！\n配信の時よりもよりわかりやすく編集＆タイムスタンプもつくってもらっています。\nこれを見れば山田のコンテンツをを安心して見たり、コメントすることができます。絶対見てね！\n\n動画制作/神山",
+    "subtitle": "subtitles/UPzqeJfj7-k.srt",
+    "tags": [
+      "山田龍一郎"
+    ],
+    "channels": [
+      {
+        "id": "UCzHiiP2r1zyTr8A1-6HtQtw",
+        "name": "山田龍一郎 / Yamada Ryuichiro【にじさんじ】",
+        "handle": "@yamadaryuichiro",
+        "url": "https://www.youtube.com/@yamadaryuichiro",
+        "avatar": "https://yt3.ggpht.com/BSrGUZrfdrs5eSOkd47PcvntlMKDhfUnUMknmY-il0IhkH6gQbMLUdr3Zw7CX_NBkqEAmiNa5Ng=s240-c-k-c0x00ffffff-no-rj"
+      }
+    ],
+    "uploader": {
+      "name": "山田龍一郎 / Yamada Ryuichiro【にじさんじ】",
+      "url": "https://www.youtube.com/@YamadaRyuichiro"
+    }
+  }
+]
