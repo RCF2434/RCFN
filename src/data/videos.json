@@ -1,5 +1,58 @@
 [
   {
+    "id": "rA9oU3kImyk",
+    "youtubeId": "rA9oU3kImyk",
+    "list": "nijisanji-en",
+    "title": "【🎤✨】my first ever karaoke (Singing Stream!)【NIJISANJI EN | Shu Yamino】",
+    "description": "moosic\n\nMicrophone by @AlzuraKyler, and\nThumbnail illustration by @hyu_art on twitter! Thank you very much!!\n--------------------------------------------------------------------\nSet List:\nHibana / DECO*27\nYONA YONA DANCE / Akiko Wada (和田アキ子 X フレデリック)\nGoodbye Sengen / Chinozo\nphony / Tsumiki\nOnomatopetenshi / teniwoha\nLION / May'n & Ai Nakajima (inst:   • [【カラオケ】ライオン - May'n/中島愛【オフボーカル】｜「マクロスF」オープニング ](https://www.youtube.com/watch?v=DHmGYFXr0Oc) )\nLove & Destroy / MI8k\nラブカ? / 柊キライ\nSeparate / Police Piccadilly\nKimi no Shiranai Monogatari / supercell (inst:    • [【カラオケ】君の知らない物語 - supercell【オフボーカル】｜アニメ『化物語...](https://www.youtube.com/watch?v=AnF9xIdLxSA)  )",
+    "subtitle": "subtitles/rA9oU3kImyk.srt",
+    "speakers": {
+      "中": "ivory"
+    },
+    "tags": [
+      "Shu Yamino"
+    ],
+    "channels": [
+      {
+        "id": "UCG0rzBZV_QMP4MtWg6IjhEA",
+        "name": "Shu Yamino【NIJISANJI EN】",
+        "handle": "@shuyamino",
+        "url": "https://www.youtube.com/@shuyamino",
+        "avatar": "https://yt3.ggpht.com/w2LaS4ankJlkf3FdjHJVSWBOTAHYfsC-RcEi95NOrgcChjJG6Lz3x_b7UPQBiZ_1HJt_GemBeR8=s240-c-k-c0x00ffffff-no-rj"
+      }
+    ],
+    "notes": [
+      {
+        "time": 1950,
+        "text": "此段歌詞在描述羅馬皇帝克勞狄二世禁止年輕男子結婚，而叫做瓦倫泰的教士違反了皇帝的命令，偷偷為年輕男女主持婚禮，被皇帝抓進監牢，並據說於公元269年2月14日被處決。詳細考察可以參考連結（日文）。",
+        "url": "https://note.com/onakagasuitaze/n/n4da3f44ce5a5"
+      },
+      {
+        "time": 2246,
+        "text": "請參考連結中影片的聲音。",
+        "url": "https://youtu.be/j3hOd7u35no"
+      },
+      {
+        "time": 2456,
+        "text": "水引子為水井在打水時預先注入的引導水流用的水，引申為來自他人的提點，或是為了事情發展預先做的準備。"
+      },
+      {
+        "time": 2703,
+        "text": "為黑人抬棺舞的迷因梗，詳見連結（英文）。",
+        "url": "https://knowyourmeme.com/memes/coffin-dance-dancing-pallbearers"
+      },
+      {
+        "time": 3356,
+        "text": "「ラブカ」於歌詞中有雙關之意，一為皺鰓鯊，一為日文的「Love 嗎？」之意，為保留歌詞閱讀的趣味性，故以羅馬拼音呈現。（完全不重要的補充：本歌曲中歌詞提到「白堊紀」會讓人誤以為皺鰓鯊在白堊紀（中生代晚期）已存在，但實際上目前有紀錄最早的化石年代為新生代晚期，至少相差了六千萬年。）"
+      }
+    ],
+    "chat": "chats/rA9oU3kImyk.json",
+    "uploader": {
+      "name": "Shu Yamino【NIJISANJI EN】",
+      "url": "https://www.youtube.com/@ShuYamino"
+    }
+  },
+  {
     "id": "UPzqeJfj7-k",
     "youtubeId": "UPzqeJfj7-k",
     "list": "nijisanji",
