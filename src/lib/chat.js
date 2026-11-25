@@ -2,7 +2,7 @@
  * 直播錄檔的聊天室重播。
  *
  * 來源：yt-dlp 下載的聊天紀錄（每行一個 JSON）
- *   yt-dlp --skip-download --write-subs --sub-langs live_chat <影片網址>
+ *   yt-dlp --js-runtimes node --skip-download --write-subs --sub-langs live_chat <影片網址>
  *
  * 轉成精簡的純文字格式存進 public/chats/<id>.json（不存頭貼與圖片）：
  *   {

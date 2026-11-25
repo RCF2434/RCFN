@@ -1,9 +1,36 @@
 /**
- * 影片註釋：videos.json 的 notes: [{ time: 秒數, text: "註釋內容" }]
+ * 影片註釋：videos.json 的 notes: [{ time: 秒數, text: "註釋內容", url?: "https://…" }]
  * - 依時間排序後編號 1、2、3…
  * - 字幕播到該時間時，那一句字幕後面標示（*編號）
- * - 影片頁下方列出「1. 註釋內容」，點編號跳到該時間
+ * - 影片頁下方列出「1. 註釋內容」，點編號跳到該時間；有 url 時在文字最後加上外連連結
  */
+
+/**
+ * 整理註釋的連結：空白回傳 ''；沒寫協定時補上 https://；只接受 http／https。
+ * 不合法回傳 null。
+ */
+export function normalizeNoteUrl(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value) return '';
+  const withScheme = /^[a-z][a-z\d+.-]*:/i.test(value) ? value : `https://${value}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    if (!url.hostname.includes('.') && url.hostname !== 'localhost') return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+/** 連結顯示用的名稱：網域（去掉 www.） */
+export function noteUrlLabel(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
 
 /** 解析時間輸入：83、1:23、1:23.5、1:02:03、1:23,5；不合法回傳 null */
 export function parseTimeInput(input) {
@@ -31,13 +58,13 @@ export function formatTimestamp(seconds) {
   return frac ? `${base}.${frac}` : base;
 }
 
-/** 整理成排序好的註釋，加上編號：[{ number, time, text }] */
+/** 整理成排序好的註釋，加上編號：[{ number, time, text, url }]（url 不合法就不顯示） */
 export function numberNotes(notes) {
   return (Array.isArray(notes) ? notes : [])
     .filter((n) => n && Number.isFinite(n.time) && n.time >= 0 && typeof n.text === 'string' && n.text.trim())
-    .map((n, order) => ({ time: n.time, text: n.text.trim(), order }))
+    .map((n, order) => ({ time: n.time, text: n.text.trim(), url: normalizeNoteUrl(n.url) || null, order }))
     .sort((a, b) => a.time - b.time || a.order - b.order)
-    .map(({ time, text }, i) => ({ number: i + 1, time, text }));
+    .map(({ time, text, url }, i) => ({ number: i + 1, time, text, url }));
 }
 
 /** 找出包含這個時間的第一句字幕（cues 依開始時間排序） */
@@ -67,7 +94,7 @@ export function noteMarkers(cues, numbered) {
 /*
  * 註釋草稿檔（匯出／匯入）：
  *   { "type": "ytsubs-notes", "version": 1, "video": { "id", "youtubeId", "title" }, "exportedAt",
- *     "notes": [{ "time": 83.5, "text": "…" }, { "time": "1:2", "text": "打到一半" }] }
+ *     "notes": [{ "time": 83.5, "text": "…", "url": "https://…" }, { "time": "1:2", "text": "打到一半" }] }
  * 時間合法就存秒數；還沒打完或格式錯的，原樣存成文字，匯入後可以接著改。
  * 匯入也接受只有 notes 陣列的檔案，或 videos.json 裡的 notes 格式。
  */
@@ -76,10 +103,12 @@ export const MAX_NOTES_FILE_BYTES = 1024 * 1024;
 
 export function serializeNotesDraft(rows, video = {}) {
   const notes = rows
-    .filter((row) => row.time.trim() || row.text.trim())
+    .filter((row) => row.time.trim() || row.text.trim() || row.url?.trim())
     .map((row) => {
       const seconds = parseTimeInput(row.time);
-      return { time: seconds ?? row.time.trim(), text: row.text };
+      const note = { time: seconds ?? row.time.trim(), text: row.text };
+      if (row.url?.trim()) note.url = row.url.trim();
+      return note;
     });
   const data = {
     type: NOTES_FILE_TYPE,
@@ -91,7 +120,7 @@ export function serializeNotesDraft(rows, video = {}) {
   return `${JSON.stringify(data, null, 2)}\n`;
 }
 
-/** 解析匯入的檔案：回傳 { items: [{ time: 顯示用文字, text }], video }；格式不對就丟出錯誤 */
+/** 解析匯入的檔案：回傳 { items: [{ time: 顯示用文字, text, url }], video }；格式不對就丟出錯誤 */
 export function parseNotesFile(text) {
   let data;
   try {
@@ -106,8 +135,9 @@ export function parseNotesFile(text) {
     .map((n) => ({
       time: typeof n.time === 'number' && Number.isFinite(n.time) ? formatTimestamp(n.time) : String(n.time ?? '').trim(),
       text: typeof n.text === 'string' ? n.text : '',
+      url: typeof n.url === 'string' ? n.url : '',
     }))
-    .filter((n) => n.time || n.text.trim());
+    .filter((n) => n.time || n.text.trim() || n.url.trim());
   if (!items.length) throw new Error('檔案裡沒有任何註釋。');
   return { items, video: Array.isArray(data) ? null : (data.video ?? null) };
 }

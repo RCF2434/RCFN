@@ -55,7 +55,8 @@ export default function ChatField({ value, onChange, youtubeId, disabled }) {
     }
   };
 
-  const command = `yt-dlp --skip-download --write-subs --sub-langs live_chat "https://www.youtube.com/watch?v=${youtubeId || '影片ID'}"`;
+  // --js-runtimes node：yt-dlp 預設只找 Deno 來解析 YouTube 的 JavaScript，沒有就會警告；改用本機已有的 Node.js
+  const command = `yt-dlp --js-runtimes node --skip-download --write-subs --sub-langs live_chat "https://www.youtube.com/watch?v=${youtubeId || '影片ID'}"`;
   const fileInput = (
     <label
       className={`dropzone${dragging ? ' is-dragging' : ''}`}
@@ -160,6 +161,10 @@ export default function ChatField({ value, onChange, youtubeId, disabled }) {
           <li>
             安裝 <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noreferrer">yt-dlp</a>，在終端機執行：
             <pre className="chat-field__command mono">{command}</pre>
+          </li>
+          <li>
+            <code className="mono">--js-runtimes node</code> 讓 yt-dlp 以 Node.js 解析 YouTube，避免出現「No supported JavaScript
+            runtime」警告；執行發布頁的電腦已安裝 Node.js，不需另外安裝。
           </li>
           <li>執行後會產生檔名結尾為 <code className="mono">.live_chat.json</code> 的檔案，選擇該檔案即可。</li>
           <li>只會保留文字：時間、名字、身分（直播主、管理員、會員）、訊息、超級留言金額；不存頭貼和圖片，自訂表情會變成 :代碼:。</li>

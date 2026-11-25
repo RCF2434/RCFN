@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseSRT } from '../src/lib/srt.js';
+import { normalizeNoteUrl } from '../src/lib/notes.js';
 import { readChatData } from '../src/lib/chat.js';
 import { PALETTE_KEYS, resolveSpeakerColors, toSpeakerColor } from '../src/lib/speakers.js';
 import { LIST_KEYS, getList, isListKey, videoListKey } from '../src/lib/lists.js';
@@ -70,6 +71,7 @@ for (const video of videos) {
       video.notes.forEach((n, i) => {
         if (!n || !Number.isFinite(n.time) || n.time < 0) warn(`第 ${i + 1} 則註釋的 time 應該是秒數（數字）`);
         if (!n || typeof n.text !== 'string' || !n.text.trim()) warn(`第 ${i + 1} 則註釋沒有內容`);
+        if (n?.url !== undefined && !normalizeNoteUrl(n.url)) warn(`第 ${i + 1} 則註釋的 url 不是 http(s) 網址，影片頁不會顯示連結：「${n.url}」`);
       });
   }
 

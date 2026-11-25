@@ -1,14 +1,17 @@
 /**
  * 註釋草稿自動儲存在瀏覽器（localStorage），每支影片一份：
- *   ytsubs:notes-draft:<youtubeId> → { savedAt, notes: [{ time: 輸入的文字, text }] }
+ *   ytsubs:notes-draft:<youtubeId> → { savedAt, notes: [{ time: 輸入的文字, text, url? }] }
  * 時間存成輸入框裡的文字，打到一半的也能原樣還原。
  * 發布成功後清掉；超過 30 天沒動的草稿會在下次儲存時順便刪除。
  */
 const PREFIX = 'ytsubs:notes-draft:';
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
+// 草稿的每則：{ time, text, url? }（url 是輸入的文字，空的不存）
 const filledNotes = (rows) =>
-  rows.filter((row) => row.time.trim() || row.text.trim()).map((row) => ({ time: row.time.trim(), text: row.text }));
+  rows
+    .filter((row) => row.time.trim() || row.text.trim() || row.url?.trim())
+    .map((row) => (row.url?.trim() ? { time: row.time.trim(), text: row.text, url: row.url.trim() } : { time: row.time.trim(), text: row.text }));
 
 export function loadNotesDraft(youtubeId) {
   try {
@@ -16,7 +19,7 @@ export function loadNotesDraft(youtubeId) {
     if (!data || !Array.isArray(data.notes) || !data.notes.length) return null;
     const notes = data.notes
       .filter((n) => n && typeof n.time === 'string' && typeof n.text === 'string')
-      .map((n) => ({ time: n.time, text: n.text }));
+      .map((n) => (typeof n.url === 'string' && n.url ? { time: n.time, text: n.text, url: n.url } : { time: n.time, text: n.text }));
     return notes.length ? { savedAt: data.savedAt ?? null, notes } : null;
   } catch {
     return null;

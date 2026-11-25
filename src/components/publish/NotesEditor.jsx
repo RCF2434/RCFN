@@ -2,44 +2,53 @@ import { useMemo, useState } from 'react';
 import { useNotesDraft } from '../../hooks/useNotesDraft.js';
 import { formatSavedAt } from '../../lib/notesDraft.js';
 import ConfirmDialog from '../ConfirmDialog.jsx';
-import { Clock, Download, Play, Plus, Upload, X } from 'lucide-react';
+import { Clock, Download, Link2, Play, Plus, Upload, X } from 'lucide-react';
 import {
   MAX_NOTES_FILE_BYTES,
   cueAt,
   formatTimestamp,
+  normalizeNoteUrl,
   parseNotesFile,
   parseTimeInput,
   serializeNotesDraft,
 } from '../../lib/notes.js';
 
 let nextKey = 0;
-const emptyRow = (time = '') => ({ key: ++nextKey, time, text: '' });
+// 每列：時間（輸入的文字）、內容、連結（選填，輸入的文字）
+const emptyRow = (time = '') => ({ key: ++nextKey, time, text: '', url: '' });
+const urlOf = (n) => (typeof n?.url === 'string' ? n.url : '');
 
 /** videos.json 的 notes → 編輯列 */
 export function noteRows(notes) {
   return (Array.isArray(notes) ? notes : [])
     .filter((n) => n && Number.isFinite(n.time))
     .sort((a, b) => a.time - b.time)
-    .map((n) => ({ key: ++nextKey, time: formatTimestamp(n.time), text: n.text ?? '' }));
+    .map((n) => ({ key: ++nextKey, time: formatTimestamp(n.time), text: n.text ?? '', url: urlOf(n) }));
 }
 
-/** 草稿裡存的 [{ time: 輸入的文字, text }] → 編輯列 */
+/** 草稿裡存的 [{ time: 輸入的文字, text, url? }] → 編輯列 */
 export function textRows(list) {
   return (Array.isArray(list) ? list : [])
     .filter((n) => n && typeof n.time === 'string' && typeof n.text === 'string')
-    .map((n) => ({ key: ++nextKey, time: n.time, text: n.text }));
+    .map((n) => ({ key: ++nextKey, time: n.time, text: n.text, url: urlOf(n) }));
 }
 
-const isBlank = (row) => !row.time.trim() && !row.text.trim();
+const isBlank = (row) => !row.time.trim() && !row.text.trim() && !row.url?.trim();
+const badUrl = (row) => normalizeNoteUrl(row.url) === null;
 
-/** 草稿的 [{ time, text }] → 編輯列 */
-const draftToRows = (notes) => notes.map((n) => ({ key: ++nextKey, time: n.time, text: n.text }));
+/** 草稿的 [{ time, text, url? }] → 編輯列 */
+const draftToRows = (notes) => notes.map((n) => ({ key: ++nextKey, time: n.time, text: n.text, url: urlOf(n) }));
 
-/** 編輯列 → 存檔用的 notes（排序好；整列空白的略過） */
+/** 編輯列 → 存檔用的 notes（排序好；整列空白的略過；沒有連結就不寫 url） */
 export function rowsToNotes(rows) {
   return rows
     .filter((row) => !isBlank(row))
-    .map((row) => ({ time: parseTimeInput(row.time), text: row.text.trim() }))
+    .map((row) => {
+      const note = { time: parseTimeInput(row.time), text: row.text.trim() };
+      const url = normalizeNoteUrl(row.url);
+      if (url) note.url = url;
+      return note;
+    })
     .filter((n) => n.time !== null && n.text)
     .sort((a, b) => a.time - b.time);
 }
@@ -49,6 +58,7 @@ export function notesProblems(rows) {
   const filled = rows.filter((row) => !isBlank(row));
   if (filled.some((row) => parseTimeInput(row.time) === null)) problems.push('修正註釋的時間格式（例如 1:23）');
   if (filled.some((row) => !row.text.trim())) problems.push('填入註釋內容，或刪除空白的註釋');
+  if (filled.some(badUrl)) problems.push('修正註釋的連結（需為 http:// 或 https:// 網址）');
   return problems;
 }
 
@@ -114,7 +124,7 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
   };
 
   function applyImport(items, mode, mismatch) {
-    const imported = items.map((item) => ({ key: ++nextKey, time: item.time, text: item.text }));
+    const imported = items.map((item) => ({ key: ++nextKey, time: item.time, text: item.text, url: item.url ?? '' }));
     onChange((list) => (mode === 'replace' ? imported : [...list.filter((row) => !isBlank(row)), ...imported]));
     setIo({
       pending: null,
@@ -250,7 +260,31 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
                   onChange={(event) => update(row.key, { text: event.target.value })}
                   aria-label={number ? `註釋 ${number} 的內容` : '註釋內容'}
                 />
+                <div className="note-row__url">
+                  <Link2 size={16} aria-hidden="true" />
+                  <input
+                    className="input"
+                    type="url"
+                    inputMode="url"
+                    placeholder="連結（選填），例如 https://x.com/…"
+                    value={row.url ?? ''}
+                    disabled={disabled}
+                    spellCheck={false}
+                    autoComplete="off"
+                    onChange={(event) => update(row.key, { url: event.target.value })}
+                    // 離開欄位時整理網址（例如補上 https://）
+                    onBlur={() => {
+                      const url = normalizeNoteUrl(row.url);
+                      if (url && url !== row.url) update(row.key, { url });
+                    }}
+                    aria-label={number ? `註釋 ${number} 的連結（選填）` : '註釋的連結（選填）'}
+                    aria-invalid={badUrl(row) || undefined}
+                  />
+                </div>
                 {badTime && <p className="field__hint field__hint--error">時間格式無法辨識，格式為 1:23 或 1:02:03。</p>}
+                {badUrl(row) && (
+                  <p className="field__hint field__hint--error">連結無法辨識，需為 http:// 或 https:// 網址。</p>
+                )}
                 {cue && number && (
                   <p className="field__hint">
                     會標在 {formatTimestamp(cue.start)}–{formatTimestamp(cue.end)} 這句字幕上，字幕出現時會一併標示（*{number}）。
@@ -339,7 +373,7 @@ export default function NotesEditor({ value: rows, onChange: setRows, cues, getC
 
       <p className="field__hint">
         註釋會自動儲存為此瀏覽器中的草稿，再次開啟同一支影片時會還原；發布後草稿即清除。如需更換電腦或備份，可「匯出」為檔案，之後再「匯入」。
-        新增時會自動填入預覽目前的播放時間。字幕播放至該時間時，該句字幕後方會標示（*編號）；影片頁下方會列出所有註釋，點選編號即可跳至該時間。編號依時間先後自動排列。
+        新增時會自動填入預覽目前的播放時間。字幕播放至該時間時，該句字幕後方會標示（*編號）；影片頁下方會列出所有註釋，點選編號即可跳至該時間。編號依時間先後自動排列。填入連結的註釋，影片頁會在文字最後加上外連連結（開新分頁）。
       </p>
     </div>
   );

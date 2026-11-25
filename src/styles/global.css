@@ -2752,6 +2752,26 @@ code.mono {
   overflow-wrap: anywhere;
 }
 
+/* 註釋文字最後的外連連結 */
+.note__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  color: var(--accent-text);
+  font-size: 0.9em;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.note__link svg {
+  flex: none;
+}
+
+.note__link:hover {
+  color: var(--text);
+}
+
 .notes-editor {
   display: grid;
   gap: var(--space-sm);
@@ -2791,6 +2811,19 @@ code.mono {
 
 .note-row__remove {
   margin-left: auto;
+}
+
+/* 註釋的連結（選填）：左邊放鏈結圖示 */
+.note-row__url {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--text-muted);
+}
+
+.note-row__url .input {
+  flex: 1;
+  min-width: 0;
 }
 
 .notes-editor__add {

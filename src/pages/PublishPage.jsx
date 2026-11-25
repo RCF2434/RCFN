@@ -292,7 +292,9 @@ export default function PublishPage({ editId = null }) {
    * （註釋另有每支影片各自的草稿，見 NotesEditor）。
    */
   const readyChannels = channels.filter((r) => r.status === 'ready').map((r) => r.channel);
-  const draftNotes = notes.filter((r) => r.time.trim() || r.text.trim()).map((r) => ({ time: r.time, text: r.text }));
+  const draftNotes = notes
+    .filter((r) => r.time.trim() || r.text.trim() || r.url?.trim())
+    .map((r) => (r.url?.trim() ? { time: r.time, text: r.text, url: r.url } : { time: r.time, text: r.text }));
   const draft = usePublishDraft(
     {
       enabled: !editing,
