@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, ChevronDown, ExternalLink, FileText, Send, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ExternalLink, FileText, Send, Upload } from 'lucide-react';
 import { clearDraft, openPreview, shareDraft } from '../lib/previewDraft.js';
 import { ID_RE, publicSiteUrl, publishVideo } from '../lib/publish.js';
 import { EMBED_BLOCKED, fetchOEmbed, parseYouTubeId } from '../lib/youtube.js';
@@ -34,6 +34,8 @@ import { videoChannels, videos as bundledVideos } from '../lib/videos.js';
 
 const EMPTY = [];
 const EMPTY_FORM = { url: '', title: '', description: '', id: '' };
+/** 發布分成四頁，填完一頁按下一步 */
+const PAGES = ['影片與聊天室', '字幕與說話人', '註釋', '連線與發布'];
 
 export default function PublishPage() {
   useDocumentTitle('發布影片');
@@ -221,26 +223,47 @@ export default function PublishPage() {
   );
   const previewChat = chat.mode === 'new' ? newChat : chat.mode === 'keep' && keptChat?.path === chat.path ? keptChat : undefined;
 
-  /* ---------- 檢查 ---------- */
-  const problems = [];
-  if (!youtubeId) problems.push(form.url.trim() ? '無法從網址辨識出 YouTube 影片' : '填入 YouTube 網址');
-  else if (embedProblem) problems.push('換一支可以嵌入播放的影片');
-  if (!form.title.trim()) problems.push('填入標題');
+  /* ---------- 檢查（依頁分組：每頁按下一步前要先解決自己那頁的） ---------- */
+  const pageProblems = [[], [], [], []];
+  const [videoP, subP, notesP, publishP] = pageProblems;
+  if (!youtubeId) videoP.push(form.url.trim() ? '無法從網址辨識出 YouTube 影片' : '填入 YouTube 網址');
+  else if (embedProblem) videoP.push('換一支可以嵌入播放的影片');
+  if (!form.title.trim()) videoP.push('填入標題');
   if (mode === 'create') {
-    if (!id) problems.push('填入網址代稱');
-    else if (!ID_RE.test(id)) problems.push('網址代稱只能用英文字母、數字、底線（_）和連字號（-）');
-    else if (conn.videos?.some((v) => v.id === id)) problems.push(`網址代稱「${id}」已經被使用，請換一個`);
+    if (!id) videoP.push('填入網址代稱');
+    else if (!ID_RE.test(id)) videoP.push('網址代稱只能用英文字母、數字、底線（_）和連字號（-）');
+    else if (conn.videos?.some((v) => v.id === id)) videoP.push(`網址代稱「${id}」已經被使用，請換一個`);
   }
-  if (!sub) problems.push('選擇字幕檔');
-  else if (sub.loading) problems.push('字幕檔讀取中');
-  else if (sub.error) problems.push('換一個字幕檔');
-  else if (parsed && !parsed.cues.length) problems.push('字幕檔裡讀不到任何字幕');
-  problems.push(...channelProblems(channels));
-  problems.push(...notesProblems(notes));
-  if (conn.status !== 'ready') problems.push('在上方連線 GitHub');
+  videoP.push(...channelProblems(channels));
+  if (!sub) subP.push('選擇字幕檔');
+  else if (sub.loading) subP.push('字幕檔讀取中');
+  else if (sub.error) subP.push('換一個字幕檔');
+  else if (parsed && !parsed.cues.length) subP.push('字幕檔裡讀不到任何字幕');
+  notesP.push(...notesProblems(notes));
+  if (conn.status !== 'ready') publishP.push('連線 GitHub');
+  const problems = pageProblems.flatMap((list, page) => list.map((text) => ({ page, text })));
 
   const busy = job?.phase === 'committing';
   const canPublish = problems.length === 0 && !busy;
+
+  /* ---------- 分頁 ---------- */
+  const [page, setPage] = useState(0);
+  const [blockedPage, setBlockedPage] = useState(null); // 按了下一步但這頁還沒填好
+  const [visited, setVisited] = useState(() => new Set([0])); // 去過的頁才會打勾
+  const stepsRef = useRef(null);
+  function goTo(next) {
+    setPage(next);
+    setBlockedPage(null);
+    setVisited((v) => (v.has(next) ? v : new Set(v).add(next)));
+    // 換頁後回到步驟列，從這頁開頭開始填
+    if (stepsRef.current && stepsRef.current.getBoundingClientRect().top < 0) {
+      stepsRef.current.scrollIntoView({ block: 'start' });
+    }
+  }
+  function next() {
+    if (pageProblems[page].length) setBlockedPage(page);
+    else goTo(page + 1);
+  }
 
   // 要寫進 videos.json 的這一筆；發布與新分頁預覽共用
   const description = form.description.trim();
@@ -330,18 +353,50 @@ export default function PublishPage() {
         </p>
       </header>
 
-      <ConnectionPanel settings={settings} conn={conn} onConnect={connect} onDisconnect={disconnect} />
+      <nav ref={stepsRef} className="wizard-steps" aria-label="發布步驟">
+        <ol>
+          {PAGES.map((label, i) => {
+            const done = i !== page && visited.has(i) && pageProblems[i].length === 0;
+            return (
+              <li key={label}>
+                <button
+                  type="button"
+                  className={`wizard-step${i === page ? ' is-current' : ''}${done ? ' is-done' : ''}`}
+                  aria-current={i === page ? 'step' : undefined}
+                  onClick={() => goTo(i)}
+                >
+                  <span className="wizard-step__num" aria-hidden="true">
+                    {done ? <Check size={14} /> : i + 1}
+                  </span>
+                  <span className="wizard-step__label">{label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
 
       <div className="publish-layout">
         <div className="publish-form">
-          {/* ---------- 影片 ---------- */}
+          {/* ========== 第 1 頁：影片資料＋聊天室 ========== */}
+          <div className="wizard-page" hidden={page !== 0}>
           <section className="panel" aria-labelledby={`${uid}-video`}>
             <div>
-              <p className="eyebrow">Step 2 · 影片</p>
+              <p className="eyebrow">Video</p>
               <h2 id={`${uid}-video`} className="panel__title">
                 影片資料
               </h2>
             </div>
+
+            {conn.status !== 'ready' && (
+              <p className="field__hint">
+                要修改已經發布的影片，先
+                <button type="button" className="link-btn" onClick={() => goTo(3)}>
+                  到第 4 步連線 GitHub
+                </button>
+                ，回來這裡就能選擇。
+              </p>
+            )}
 
             {conn.status === 'ready' && conn.videos.length > 0 && (
               <div className="field">
@@ -478,10 +533,24 @@ export default function PublishPage() {
             </div>
           </section>
 
-          {/* ---------- 字幕檔 ---------- */}
+          {/* ---------- 聊天室重播 ---------- */}
+          <section className="panel" aria-labelledby={`${uid}-chat`}>
+            <div>
+              <p className="eyebrow">Chat replay</p>
+              <h2 id={`${uid}-chat`} className="panel__title">
+                聊天室重播（選填）
+              </h2>
+            </div>
+            <p className="panel__text muted">直播錄檔可以附上聊天紀錄，影片頁會在播放器右邊依時間重播聊天室。</p>
+            <ChatField value={chat} onChange={setChat} youtubeId={youtubeId} disabled={busy} />
+          </section>
+          </div>
+
+          {/* ========== 第 2 頁：字幕檔＋說話人顏色 ========== */}
+          <div className="wizard-page" hidden={page !== 1}>
           <section className="panel" aria-labelledby={`${uid}-sub`}>
             <div>
-              <p className="eyebrow">Step 3 · 字幕</p>
+              <p className="eyebrow">Subtitles</p>
               <h2 id={`${uid}-sub`} className="panel__title">
                 字幕檔
               </h2>
@@ -587,7 +656,7 @@ export default function PublishPage() {
           {/* ---------- 說話人顏色 ---------- */}
           <section className="panel" aria-labelledby={`${uid}-cast`}>
             <div>
-              <p className="eyebrow">Step 4 · Cast</p>
+              <p className="eyebrow">Cast</p>
               <h2 id={`${uid}-cast`} className="panel__title">
                 說話人顏色
               </h2>
@@ -624,11 +693,13 @@ export default function PublishPage() {
               </>
             )}
           </section>
+          </div>
 
-          {/* ---------- 註釋 ---------- */}
+          {/* ========== 第 3 頁：註釋 ========== */}
+          <div className="wizard-page" hidden={page !== 2}>
           <section className="panel" aria-labelledby={`${uid}-notes`}>
             <div>
-              <p className="eyebrow">Step 5 · Notes</p>
+              <p className="eyebrow">Notes</p>
               <h2 id={`${uid}-notes`} className="panel__title">
                 註釋（選填）
               </h2>
@@ -643,18 +714,103 @@ export default function PublishPage() {
               video={{ id, youtubeId, title: form.title.trim() }}
             />
           </section>
+          </div>
 
-          {/* ---------- 聊天室重播 ---------- */}
-          <section className="panel" aria-labelledby={`${uid}-chat`}>
-            <div>
-              <p className="eyebrow">Step 6 · Chat replay</p>
-              <h2 id={`${uid}-chat`} className="panel__title">
-                聊天室重播（選填）
-              </h2>
-            </div>
-            <p className="panel__text muted">直播錄檔可以附上聊天紀錄，影片頁會在播放器右邊依時間重播聊天室。</p>
-            <ChatField value={chat} onChange={setChat} youtubeId={youtubeId} disabled={busy} />
+          {/* ========== 第 4 頁：連線 GitHub＋發布 ========== */}
+          <div className="wizard-page" hidden={page !== 3}>
+          <ConnectionPanel
+            settings={settings}
+            conn={conn}
+            onConnect={connect}
+            onDisconnect={disconnect}
+            step={null}
+            intro="發布時需要寫入這個網站的 GitHub repo。只想預覽字幕效果的話，可以不用連線。"
+          />
+
+          <section className="panel panel--ticket publish-submit" aria-labelledby={`${uid}-publish`}>
+            <p className="eyebrow">Admit One</p>
+            <h2 id={`${uid}-publish`} className="panel__title">
+              {mode === 'create' ? '發布' : '更新'}
+            </h2>
+
+            {problems.length > 0 ? (
+              <div>
+                <p className="field__label">發布前還需要：</p>
+                <ul className="checklist">
+                  {problems.map((p) => (
+                    <li key={p.text}>
+                      {p.text}
+                      {p.page !== 3 && (
+                        <>
+                          {' '}
+                          <button type="button" className="link-btn" onClick={() => goTo(p.page)}>
+                            回到第 {p.page + 1} 步
+                          </button>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="muted">
+                {mode === 'create'
+                  ? `會在 ${settings.owner}/${settings.repo} 新增「${form.title.trim()}」與字幕檔 subtitles/${id}.srt。`
+                  : `會更新「${existing.title}」的資料與字幕檔。`}
+              </p>
+            )}
+
+            <button type="button" className="btn" onClick={publish} disabled={!canPublish}>
+              <Send size={16} aria-hidden="true" />
+              {busy ? '發布中…' : mode === 'create' ? '發布到網站' : '更新到網站'}
+            </button>
+
+            {job && (
+              <>
+                <TicketTear />
+                <PublishStatus job={job} repoUrl={conn.gh?.repoUrl ?? ''} siteUrl={siteUrl} />
+                {job.phase !== 'committing' && (
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => {
+                      chooseTarget('');
+                      goTo(0);
+                    }}
+                  >
+                    再發布一支
+                  </button>
+                )}
+              </>
+            )}
           </section>
+          </div>
+
+          {/* ---------- 上一步／下一步 ---------- */}
+          {blockedPage === page && pageProblems[page].length > 0 && (
+            <div className="notice notice--warning" role="alert">
+              <p className="field__label">這一步還需要：</p>
+              <ul>
+                {pageProblems[page].map((text) => (
+                  <li key={text}>{text}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="wizard-nav">
+            {page > 0 && (
+              <button type="button" className="btn btn--ghost" onClick={() => goTo(page - 1)}>
+                <ArrowLeft size={16} aria-hidden="true" />
+                上一步
+              </button>
+            )}
+            {page < PAGES.length - 1 && (
+              <button type="button" className="btn wizard-nav__next" onClick={next}>
+                下一步：{PAGES[page + 1]}
+                <ArrowRight size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ---------- 預覽 ---------- */}
@@ -687,48 +843,6 @@ export default function PublishPage() {
               用正式影片頁的版面預覽，只有這台電腦看得到。這一頁要保持開著，修改會自動同步過去。
             </p>
           </div>
-        </section>
-
-        {/* ---------- 發布 ---------- */}
-        <section className="panel panel--ticket publish-submit" aria-labelledby={`${uid}-publish`}>
-          <p className="eyebrow">Step 7 · Admit One</p>
-          <h2 id={`${uid}-publish`} className="panel__title">
-            {mode === 'create' ? '發布' : '更新'}
-          </h2>
-
-          {problems.length > 0 ? (
-            <div>
-              <p className="field__label">發布前還需要：</p>
-              <ul className="checklist">
-                {problems.map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="muted">
-              {mode === 'create'
-                ? `會在 ${settings.owner}/${settings.repo} 新增「${form.title.trim()}」與字幕檔 subtitles/${id}.srt。`
-                : `會更新「${existing.title}」的資料與字幕檔。`}
-            </p>
-          )}
-
-          <button type="button" className="btn" onClick={publish} disabled={!canPublish}>
-            <Send size={16} aria-hidden="true" />
-            {busy ? '發布中…' : mode === 'create' ? '發布到網站' : '更新到網站'}
-          </button>
-
-          {job && (
-            <>
-              <TicketTear />
-              <PublishStatus job={job} repoUrl={conn.gh?.repoUrl ?? ''} siteUrl={siteUrl} />
-              {job.phase !== 'committing' && (
-                <button type="button" className="btn btn--ghost" onClick={() => chooseTarget('')}>
-                  再發布一支
-                </button>
-              )}
-            </>
-          )}
         </section>
       </div>
     </div>

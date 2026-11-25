@@ -1251,6 +1251,11 @@ code.mono {
   margin-bottom: 2rem;
 }
 
+/* 發布頁的連線放在表單欄最後，間距交給欄位的 gap */
+.publish-form .conn-panel {
+  margin-bottom: 0;
+}
+
 .conn-summary {
   display: flex;
   flex-wrap: wrap;
@@ -1277,8 +1282,141 @@ code.mono {
 .publish-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'form' 'preview' 'publish';
+  grid-template-areas: 'form' 'preview';
   gap: var(--space-xl);
+}
+
+/* ===== 發布頁分頁 ===== */
+.wizard-steps {
+  margin-bottom: var(--space-xl);
+  scroll-margin-top: calc(64px + env(safe-area-inset-top, 0px) + 1rem);
+}
+
+.wizard-steps ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wizard-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: 52px;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  box-shadow: var(--flat);
+  font: 500 0.9rem/1.3 var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.wizard-step:hover {
+  box-shadow: var(--convex);
+}
+
+.wizard-step.is-current {
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--concave);
+}
+
+.wizard-step__num {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.8rem;
+}
+
+.wizard-step.is-current .wizard-step__num {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--surface);
+}
+
+.wizard-step.is-done .wizard-step__num {
+  border-color: var(--gold);
+  color: var(--accent-text);
+}
+
+/* 窄螢幕只顯示目前那一步的名稱 */
+@media (max-width: 640px) {
+  .wizard-step {
+    justify-content: center;
+    padding-inline: 0.25rem;
+  }
+
+  .wizard-step:not(.is-current) .wizard-step__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .wizard-steps ol {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+
+  .wizard-step.is-current {
+    flex-direction: column;
+    gap: var(--space-2xs);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+}
+
+.wizard-page {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.wizard-page[hidden] {
+  display: none;
+}
+
+.wizard-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.wizard-nav__next {
+  margin-left: auto;
+}
+
+.wizard-nav + .notice,
+.notice + .wizard-nav {
+  margin-top: calc(-1 * var(--space-md));
+}
+
+.notice > .field__label {
+  margin: 0;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .publish-form {
@@ -1294,7 +1432,6 @@ code.mono {
 }
 
 .publish-submit {
-  grid-area: publish;
   justify-items: start;
 }
 
@@ -1305,7 +1442,7 @@ code.mono {
 @media (min-width: 1024px) {
   .publish-layout {
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-    grid-template-areas: 'form preview' 'publish preview';
+    grid-template-areas: 'form preview';
     align-items: start;
   }
 

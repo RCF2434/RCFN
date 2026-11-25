@@ -4,8 +4,10 @@ import Toggle from '../Toggle.jsx';
 
 const NEW_TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 
-/** 步驟一：連線 GitHub。連線成功後收合成一行摘要。 */
-export default function ConnectionPanel({ settings, conn, onConnect, onDisconnect }) {
+const DEFAULT_INTRO = '發布時需要寫入這個網站的 GitHub repo。只想先預覽字幕效果，可以跳過這步，直接往下填。';
+
+/** 連線 GitHub。連線成功後收合成一行摘要。 */
+export default function ConnectionPanel({ settings, conn, onConnect, onDisconnect, step = 1, intro = DEFAULT_INTRO }) {
   const [draft, setDraft] = useState(settings);
   const [editing, setEditing] = useState(false);
   const uid = useId();
@@ -22,7 +24,7 @@ export default function ConnectionPanel({ settings, conn, onConnect, onDisconnec
       <section className="panel conn-panel" aria-labelledby={`${uid}-title`}>
         <div className="conn-summary">
           <div>
-            <p className="eyebrow">Step 1 · GitHub</p>
+            <p className="eyebrow">{step ? `Step ${step} · ` : ''}GitHub</p>
             <h2 id={`${uid}-title`} className="panel__title">
               已連線
             </h2>
@@ -70,14 +72,12 @@ export default function ConnectionPanel({ settings, conn, onConnect, onDisconnec
   return (
     <section className="panel conn-panel" aria-labelledby={`${uid}-title`}>
       <div>
-        <p className="eyebrow">Step 1 · GitHub</p>
+        <p className="eyebrow">{step ? `Step ${step} · ` : ''}GitHub</p>
         <h2 id={`${uid}-title`} className="panel__title">
           連線你的 repo
         </h2>
       </div>
-      <p className="panel__text muted">
-        發布時需要寫入這個網站的 GitHub repo。只想先預覽字幕效果，可以跳過這步，直接往下填。
-      </p>
+      <p className="panel__text muted">{intro}</p>
 
       <form
         className="conn-form"
