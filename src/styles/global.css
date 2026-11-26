@@ -130,7 +130,8 @@ main {
   --header-h: 64px;
 }
 
-@media (max-width: 480px) {
+/* 頁首在 600px 以下改成 40px 高（與只顯示 RCFN 同一個門檻） */
+@media (max-width: 600px) {
   :root {
     --header-h: 40px;
   }
@@ -157,26 +158,23 @@ main {
   white-space: nowrap;
 }
 
-/*
- * 完整品牌名（RCFN · 非官方字幕）＋兩個列表＋主題按鈕排一行約需 530px，
- * 再窄就只留 RCFN（比 480px 的手機頁首規則更早生效，留一點餘量）
- */
-@media (max-width: 600px) {
-  .brand__sub {
-    display: none;
-  }
-}
-
 .site-nav__links {
   display: flex;
   align-items: center;
   gap: var(--space-lg);
 }
 
-/* 手機：頁首高 40px，要放兩個列表，品牌名只留 RCFN，元素一起縮小 */
-@media (max-width: 480px) {
+/*
+ * 窄螢幕（600px 以下）：頁首高 40px，品牌名只留 RCFN，元素一起縮小。
+ * 完整品牌名（RCFN · 非官方字幕）＋兩個列表＋主題按鈕排一行約需 530px，留一點餘量。
+ */
+@media (max-width: 600px) {
   .site-nav__inner {
     height: var(--header-h);
+  }
+
+  .brand__sub {
+    display: none;
   }
 
   .brand {
@@ -193,7 +191,7 @@ main {
     gap: var(--space-md);
   }
 
-  .nav-link {
+  .site-nav .nav-link {
     padding-block: 0.35rem;
     font-size: 0.85rem;
   }
