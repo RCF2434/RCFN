@@ -103,17 +103,22 @@ main {
   flex: 1;
 }
 
+/* 頁面左右留白；手機影片頁的播放器用它往外推，貼齊螢幕兩側 */
+:root {
+  --gutter: 1.5rem;
+}
+
+@media (max-width: 480px) {
+  :root {
+    --gutter: 1rem;
+  }
+}
+
 .container {
   width: 100%;
   max-width: 1280px;
   margin-inline: auto;
-  padding-inline: 1.5rem;
-}
-
-@media (max-width: 480px) {
-  .container {
-    padding-inline: 1rem;
-  }
+  padding-inline: var(--gutter);
 }
 
 .site-nav {
@@ -947,8 +952,8 @@ main {
 
 .collapsible.is-collapsed .collapsible__content {
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
-  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 var(--fade-start, 55%), transparent);
+  mask-image: linear-gradient(to bottom, #000 var(--fade-start, 55%), transparent);
 }
 
 .collapsible__toggle {
@@ -3082,6 +3087,8 @@ code.mono {
   .video-divider {
     display: block;
     margin-block: var(--space-sm);
+    /* 撕線延伸出頁面左右留白，貼齊螢幕兩側（.ticket-tear 依 --tear-inset 往外推） */
+    --tear-inset: var(--gutter);
   }
 
   .video-page .video-info,
@@ -3093,6 +3100,21 @@ code.mono {
     border-radius: 0;
     background: transparent;
     box-shadow: none;
+    /* 影片寬度 100%：抵銷頁面左右留白，貼齊螢幕兩側 */
+    margin-inline: calc(-1 * var(--gutter));
+  }
+
+  .video-page .player-shell:not(.is-fs) .stage {
+    border-radius: 0;
+  }
+
+  /* 工具列與聊天室仍和頁面內容對齊 */
+  .video-page .player-shell:not(.is-fs) .player-toolbar {
+    padding-inline: var(--gutter);
+  }
+
+  .video-page .player-shell:not(.is-fs) .player-chat {
+    margin-inline: var(--gutter);
   }
 
   .video-page .panel {
@@ -3114,6 +3136,13 @@ code.mono {
 
   .video-page .video-channel {
     margin-top: var(--space-md);
+  }
+
+  /* 說明與註釋的內文在手機上小一號 */
+  .video-page .video-desc,
+  .video-page .note__text,
+  .video-page .note__jump {
+    font-size: 0.875rem;
   }
 }
 

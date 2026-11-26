@@ -1,6 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { Link } from 'react-router';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { videoChannels, watchUrl } from '../lib/videos.js';
 import { resolveSpeakerColors } from '../lib/speakers.js';
 import { LANG_BY_KEY, referenceCues, sortLangs } from '../lib/subtitleTracks.js';
@@ -12,9 +11,8 @@ import TicketTear from './TicketTear.jsx';
 import LinkedText from './LinkedText.jsx';
 import Collapsible from './Collapsible.jsx';
 
-// 說明、註釋過長時先收合的高度（px）：說明約 8 行
-const ABOUT_COLLAPSED = 200;
-const NOTES_COLLAPSED = 300;
+// 說明、註釋過長時先收合成幾行
+const COLLAPSED_LINES = 3;
 
 /** 區塊之間的撕線：只在手機版顯示（桌機的區塊各有外框，見 .video-divider） */
 function SectionDivider() {
@@ -24,7 +22,7 @@ function SectionDivider() {
     </div>
   );
 }
-import { getList, listLink, videoListKey } from '../lib/lists.js';
+import { videoListKey } from '../lib/lists.js';
 import { jumpTime, numberNotes } from '../lib/notes.js';
 import { textLang } from '../lib/lang.js';
 
@@ -54,10 +52,6 @@ export default function VideoView({ video, subs, chat, banner }) {
   return (
     <div className="container video-page">
       {banner}
-      <Link to={listLink(listKey)} className="back-link">
-        <ArrowLeft size={18} aria-hidden="true" />
-        返回 {getList(listKey).label} 列表
-      </Link>
 
       <header className="video-head">
         {video.uploader?.name ? (
@@ -90,10 +84,10 @@ export default function VideoView({ video, subs, chat, banner }) {
       <div className="video-info">
         <section className="panel" aria-labelledby="about-title">
           <p id="about-title" className="eyebrow">
-            About
+            Description
           </p>
           {video.description ? (
-            <Collapsible collapsedHeight={ABOUT_COLLAPSED}>
+            <Collapsible lines={COLLAPSED_LINES}>
               <p className="panel__text video-desc" lang={textLang(video.description)}>
                 <LinkedText text={video.description} />
               </p>
@@ -138,7 +132,7 @@ export default function VideoView({ video, subs, chat, banner }) {
       {notes.length > 0 && (
         <section className="panel video-notes" aria-labelledby="notes-title">
           <p className="eyebrow">Notes</p>
-          <Collapsible collapsedHeight={NOTES_COLLAPSED}>
+          <Collapsible lines={COLLAPSED_LINES}>
             <NotesList notes={notes} onJump={(note) => playerRef.current?.seekTo(note.jumpTo)} />
           </Collapsible>
         </section>
