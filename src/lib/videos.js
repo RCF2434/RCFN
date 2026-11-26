@@ -6,12 +6,10 @@ export function findVideo(id) {
   return videos.find((video) => video.id === id) ?? null;
 }
 
-/** BASE_URL 是網站所在的路徑（本機 /、GitHub Pages /<repo>/），字幕檔放在 public/ 底下即可 */
-export function subtitleUrl(video) {
-  return assetUrl(video.subtitle);
-}
-
-/** public/ 底下檔案的網址 */
+/**
+ * public/ 底下檔案的網址（字幕檔、聊天室紀錄）。
+ * BASE_URL 是網站所在的路徑（本機 /、GitHub Pages /<repo>/）。
+ */
 export function assetUrl(path) {
   return `${import.meta.env.BASE_URL}${String(path).replace(/^\/+/, '')}`;
 }

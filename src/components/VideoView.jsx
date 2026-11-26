@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { videoChannels, watchUrl } from '../lib/videos.js';
 import { resolveSpeakerColors } from '../lib/speakers.js';
+import { LANG_BY_KEY, referenceCues, sortLangs } from '../lib/subtitleTracks.js';
 import SubtitlePlayer from './SubtitlePlayer.jsx';
 import TagList from './TagList.jsx';
 import ChannelBadge from './ChannelBadge.jsx';
@@ -31,18 +32,21 @@ import { textLang } from '../lib/lang.js';
  * 影片頁的內容。正式影片頁與發布前的預覽頁共用，確保預覽和上線後一樣。
  * @param {{
  *   video: object,                       // videos.json 的一筆
- *   subs: { status: string, cues: object[], speakers: string[], error: string | null },
+ *   subs: { status, tracks: { zh?, en?, ja? }, speakers, errors }, // useSubtitleTracks 的結果（多語字幕）
  *   chat?: object,                       // useChat 的結果；沒有聊天室紀錄時不傳
  *   banner?: import('react').ReactNode,  // 頁面最上方的提示（預覽用）
  * }} props
  */
 export default function VideoView({ video, subs, chat, banner }) {
   const colors = useMemo(() => resolveSpeakerColors(subs.speakers, video.speakers), [subs.speakers, video.speakers]);
-  // jumpTo：點編號時跳到的時間（那句字幕的開頭）
-  const notes = useMemo(
-    () => numberNotes(video.notes).map((note) => ({ ...note, jumpTo: jumpTime(subs.cues, note.time) })),
-    [video.notes, subs.cues],
-  );
+  // jumpTo：點編號時跳到的時間（那句字幕的開頭；以第一種有字幕的語言為準）
+  const notes = useMemo(() => {
+    const cues = referenceCues(subs.tracks);
+    return numberNotes(video.notes).map((note) => ({ ...note, jumpTo: jumpTime(cues, note.time) }));
+  }, [video.notes, subs.tracks]);
+  // 載入成功的語言（固定順序）
+  const languages = sortLangs(Object.keys(subs.tracks ?? {}));
+  const failed = sortLangs(Object.keys(subs.errors ?? {}));
   const playerRef = useRef(null);
   const channels = videoChannels(video);
   const listKey = videoListKey(video);
@@ -75,7 +79,8 @@ export default function VideoView({ video, subs, chat, banner }) {
       <SubtitlePlayer
         ref={playerRef}
         youtubeId={video.youtubeId}
-        cues={subs.cues}
+        tracks={subs.tracks}
+        languages={languages}
         colors={colors}
         notes={notes}
         chat={video.chat ? chat : undefined}
@@ -121,9 +126,9 @@ export default function VideoView({ video, subs, chat, banner }) {
               </ul>
             </div>
           )}
-          {subs.status === 'error' && (
+          {failed.length > 0 && (
             <p className="notice notice--error" role="alert">
-              字幕載入失敗（{subs.error}），請確認 {video.subtitle} 是否存在。
+              {failed.map((key) => `${LANG_BY_KEY[key].label}字幕載入失敗（${subs.errors[key]}）`).join('、')}
             </p>
           )}
         </section>

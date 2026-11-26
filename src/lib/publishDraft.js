@@ -2,8 +2,8 @@
  * 發布頁草稿：存在瀏覽器的 IndexedDB（只在這台電腦、這個瀏覽器）。
  * 字幕檔（最多 2 MB）和聊天室紀錄（最多 50 MB）放不進 localStorage，所以用 IndexedDB，
  * 並拆成三筆，大檔案只有換檔時才重寫：
- *   form     → { savedAt, target, form, idTouched, tags, channels, overrides, notes, encoding, page }
- *   subtitle → { name, source: 'file' | 'repo', buffer? , text? }
+ *   form     → { savedAt, target, form, idTouched, tags, channels, overrides, notes, encodings, page }
+ *   subtitle → { langs: { zh?: { name, source: 'file' | 'repo', buffer?, text? }, en?, ja? } }（多語字幕）
  *   chat     → 聊天室欄位狀態（不含解析後的 data，還原時從 json 重建）
  * 發布成功後清掉；超過 30 天的草稿不還原。
  */
@@ -68,12 +68,30 @@ export function clearPublishDraft() {
   return run('readwrite', (store) => store.clear());
 }
 
-/** 字幕欄位狀態 → 要存的資料（讀取中或錯誤的不存） */
-export function subtitleForDraft(sub) {
+/** 一種語言的字幕欄位狀態 → 要存的資料（讀取中或錯誤的不存） */
+function oneSubtitleForDraft(sub) {
   if (!sub || sub.loading || sub.error) return undefined;
   if (sub.buffer) return { name: sub.name, source: sub.source, buffer: sub.buffer };
   if (typeof sub.text === 'string') return { name: sub.name, source: sub.source, text: sub.text };
   return undefined;
+}
+
+/** 各語言的字幕欄位 { zh?, en?, ja? } → 要存的資料 { langs }；一個都沒有時不存 */
+export function subtitleForDraft(subs) {
+  const langs = {};
+  for (const [lang, sub] of Object.entries(subs ?? {})) {
+    const saved = oneSubtitleForDraft(sub);
+    if (saved) langs[lang] = saved;
+  }
+  return Object.keys(langs).length ? { langs } : undefined;
+}
+
+/** 存的字幕資料 → 各語言的字幕欄位；舊草稿只有一個字幕檔，視為中文 */
+export function subtitlesFromDraft(saved) {
+  if (!saved || typeof saved !== 'object') return {};
+  if (saved.langs && typeof saved.langs === 'object') return { ...saved.langs };
+  if (saved.name) return { zh: saved };
+  return {};
 }
 
 /** 聊天室欄位狀態 → 要存的資料（data 是 json 解析出來的，不重複存） */

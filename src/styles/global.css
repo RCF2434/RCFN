@@ -1268,6 +1268,29 @@ main {
   outline-offset: 2px;
 }
 
+/* 字幕語言（複選）：方框勾選 */
+.lang-picker__box {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 0.2rem;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 5px;
+  color: transparent;
+  transition: background-color 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.lang-picker .seg__face {
+  padding-right: 0.75rem;
+}
+
+.seg__option input:checked + .seg__face .lang-picker__box {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--charcoal);
+}
+
 .seg__swatch {
   display: inline-grid;
   place-items: center;
@@ -1381,15 +1404,39 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.18em;
+  justify-content: flex-end;
+  gap: 0.4em;
+  /* 多語字幕時最高佔畫面一半；再多就從上方裁掉，不會整個蓋住影片 */
+  max-height: 50%;
+  overflow: hidden;
   padding-inline: 6%;
   font-family: var(--font-body);
-  /* --sub-scale 來自工具列的字幕大小滑桿 */
-  font-size: calc(clamp(14px, 2.2vw, 30px) * var(--sub-scale, 1));
-  font-size: calc(clamp(13px, 4.6cqh, 56px) * var(--sub-scale, 1));
+  /* --sub-scale：工具列的字幕大小 × 語言數的縮小比例（見 multiLangScale）；最小 11px 才讀得到 */
+  font-size: max(11px, calc(clamp(14px, 2.2vw, 30px) * var(--sub-scale, 1)));
+  font-size: max(11px, calc(clamp(13px, 4.6cqh, 56px) * var(--sub-scale, 1)));
   line-height: 1.35;
   text-align: center;
   pointer-events: none;
+}
+
+/* 一種語言一組；組內各行間距較小，語言之間間距較大，看得出分組 */
+.sub-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.18em;
+  max-width: 100%;
+}
+
+/* 第二、三種語言比主語言小一級 */
+.sub-group:not(.is-primary) {
+  font-size: max(11px, 0.84em);
+}
+
+/* 多語時行距收緊，減少遮擋 */
+.sub-overlay:not([data-langs='1']) {
+  gap: 0.3em;
+  line-height: 1.25;
 }
 
 .sub-line {
@@ -1947,6 +1994,56 @@ code.mono {
   display: grid;
   gap: var(--space-md);
   justify-self: stretch;
+}
+
+/* 發布頁：每種語言一個字幕欄位 */
+.sub-slots {
+  display: grid;
+  gap: var(--space-md);
+  justify-self: stretch;
+}
+
+.sub-slot {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--r-sm);
+  box-shadow: var(--flat);
+}
+
+.sub-slot__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: 36px;
+}
+
+.sub-slot__title {
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.sub-slot__empty {
+  font-size: 0.8rem;
+}
+
+.dropzone--compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: 0.75rem 1rem;
+}
+
+.dropzone--compact strong {
+  font-size: 0.9rem;
+}
+
+.btn--small {
+  min-height: 36px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
 }
 
 .sub-file__name {

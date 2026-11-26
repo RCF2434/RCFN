@@ -11,6 +11,15 @@ import { normalizeNoteUrl } from '../src/lib/notes.js';
 import { readChatData } from '../src/lib/chat.js';
 import { PALETTE_KEYS, resolveSpeakerColors, toSpeakerColor } from '../src/lib/speakers.js';
 import { LIST_KEYS, getList, isListKey, videoListKey } from '../src/lib/lists.js';
+import {
+  LANG_BY_KEY,
+  SUB_LANG_KEYS,
+  isSubLang,
+  referenceCues,
+  sortLangs,
+  unionSpeakers,
+  videoSubtitles,
+} from '../src/lib/subtitleTracks.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const videos = JSON.parse(await readFile(path.join(root, 'src/data/videos.json'), 'utf8'));
@@ -30,7 +39,7 @@ const ids = new Set();
 for (const video of videos) {
   console.log(`\n${video.id ?? '(缺少 id)'}  ${video.title ?? ''}`);
 
-  for (const field of ['id', 'youtubeId', 'title', 'subtitle']) {
+  for (const field of ['id', 'youtubeId', 'title']) {
     if (!video[field]) error(`缺少欄位 "${field}"`);
   }
   if (video.id && !/^[\w-]+$/.test(video.id)) error(`id 只能用英數字、底線、連字號：「${video.id}」`);
@@ -84,30 +93,59 @@ for (const video of videos) {
     }
   }
 
-  if (!video.subtitle) continue;
-  let text;
-  try {
-    text = await readFile(path.join(root, 'public', video.subtitle), 'utf8');
-  } catch {
-    error(`找不到字幕檔 public/${video.subtitle}`);
+  // 多語字幕：subtitles: { zh, en, ja }，至少一種；舊格式的單一 subtitle 視為中文
+  const map = video.subtitles;
+  if (map !== undefined && (typeof map !== 'object' || map === null || Array.isArray(map))) {
+    warn('subtitles 應該是物件，例如 { "zh": "subtitles/x.zh.srt", "en": "subtitles/x.en.srt" }');
+  } else {
+    for (const key of Object.keys(map ?? {})) {
+      if (!isSubLang(key)) warn(`subtitles 只接受 ${SUB_LANG_KEYS.join('、')}，「${key}」會被忽略`);
+    }
+  }
+  if (map !== undefined && video.subtitle !== undefined) warn('同時有 subtitles 和舊的 subtitle，舊的 subtitle 會被忽略');
+  const subtitleFiles = videoSubtitles(video);
+  const langs = sortLangs(Object.keys(subtitleFiles));
+  if (!langs.length) {
+    error('沒有任何字幕檔（subtitles 至少要有一種語言）');
     continue;
   }
 
-  const result = parseSRT(text);
-  result.warnings.forEach(warn);
-  if (!result.cues.length) error('字幕檔解析後沒有任何字幕');
+  const tracks = {};
+  for (const lang of langs) {
+    const label = LANG_BY_KEY[lang].label;
+    const file = subtitleFiles[lang];
+    let text;
+    try {
+      text = await readFile(path.join(root, 'public', file), 'utf8');
+    } catch {
+      error(`找不到${label}字幕檔 public/${file}`);
+      continue;
+    }
+    const result = parseSRT(text);
+    result.warnings.forEach((w) => warn(`${label}：${w}`));
+    if (!result.cues.length) error(`${label}字幕解析後沒有任何字幕`);
+    tracks[lang] = result;
+    console.log(`  ${label}：${result.cues.length} 句字幕（${file}）`);
+  }
+  if (!Object.keys(tracks).length) continue;
 
+  const speakers = unionSpeakers(tracks);
   const configured = new Set(Object.keys(video.speakers ?? {}));
-  const colors = resolveSpeakerColors(result.speakers, video.speakers);
-  const auto = result.speakers.filter((name) => !configured.has(name));
-  const unused = [...configured].filter((name) => !result.speakers.includes(name));
-  const unlabeled = result.cues.reduce((n, cue) => n + cue.lines.filter((line) => !line.speaker).length, 0);
+  const colors = resolveSpeakerColors(speakers, video.speakers);
+  const auto = speakers.filter((name) => !configured.has(name));
+  const unused = [...configured].filter((name) => !speakers.includes(name));
+  const unlabeled = Object.values(tracks).reduce(
+    (n, track) => n + track.cues.reduce((m, cue) => m + cue.lines.filter((line) => !line.speaker).length, 0),
+    0,
+  );
 
-  console.log(`  ${result.cues.length} 句字幕；說話人：${result.speakers.map((n) => `${n}(${colors.get(n).key ?? '自訂'})`).join('、') || '無'}`);
+  console.log(`  說話人：${speakers.map((n) => `${n}(${colors.get(n).key ?? '自訂'})`).join('、') || '無'}`);
   if (auto.length) console.log(`  自動配色：${auto.join('、')}（可在 videos.json 的 speakers 指定）`);
   if (unlabeled) console.log(`  ${unlabeled} 行沒有標記說話人，將以中性色顯示`);
+  // 註釋以第一種有字幕的語言為準
+  const refCues = referenceCues(tracks);
   const noteTimes = Array.isArray(video.notes) ? video.notes.filter((n) => Number.isFinite(n?.time)).map((n) => n.time) : [];
-  const uncovered = noteTimes.filter((t) => !result.cues.some((c) => c.start <= t && t < c.end));
+  const uncovered = noteTimes.filter((t) => !refCues.some((c) => c.start <= t && t < c.end));
   if (noteTimes.length) console.log(`  ${noteTimes.length} 則註釋${uncovered.length ? `，其中 ${uncovered.length} 則的時間沒有字幕（不會標在字幕上）` : ''}`);
   if (unused.length) warn(`videos.json 設定了字幕裡沒出現的說話人：${unused.join('、')}（名稱需與 <v 名字> 完全一致）`);
 }

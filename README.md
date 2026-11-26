@@ -4,6 +4,7 @@
 
 ## 功能
 
+- **多語字幕**：每支影片可上傳中文／English／日本語字幕（至少一種），觀眾在工具列勾選要顯示的語言，可同時看雙語或三語字幕
 - **SRT 說話人擴充**：於字幕行開頭以 `<v 名字>` 標記說話人
 - **ASS 字幕匯入**：發布頁可上傳 .ass／.ssa，自動轉為 SRT，`Name` 欄位作為說話人
 - **依說話人分色**：每位說話人對應固定顏色，可於設定檔指定或自訂色碼，未指定者自動配色
@@ -38,7 +39,8 @@ npm run build      # 會先自動執行 check:subs
    - **頻道（選填，最多 5 個）**：貼上 YouTube 頻道連結（`https://www.youtube.com/@帳號`、`/channel/UC…`，或輸入 `@帳號`），透過 YouTube Data API 帶入頭貼與名稱，顯示於影片頁標籤下方；可拖曳左側把手調整順序。此功能需要 API 金鑰：於 Google Cloud 啟用 YouTube Data API v3 → 憑證 → 建立 API 金鑰。「應用程式限制」請選擇**網站**並加入 `http://localhost:5173/*`（埠號以 `npm run dev` 顯示的為準）；「IP 位址」限制無法填入 localhost，不適用於此情境。金鑰僅儲存於瀏覽器；頻道資料於發布時查詢一次並存入 `videos.json`，觀眾瀏覽時不會使用 API 額度。頻道更換頭貼後舊圖可能失效，此時會改為顯示名稱首字，於管理頁「編輯」該影片並重新讀取即可。
    - **聊天室重播（選填）**：直播錄檔可上傳 yt-dlp 下載的聊天紀錄（`yt-dlp --js-runtimes node --skip-download --write-subs --sub-langs live_chat 影片網址`，產生 `*.live_chat.json`；`--js-runtimes node` 讓 yt-dlp 以 Node.js 解析 YouTube，避免缺少 JavaScript 執行環境的警告）。網站會在瀏覽器中轉為純文字精簡格式（時間、名稱、身分、訊息、超級留言金額；不保存頭貼與圖片，自訂表情轉為 `:代碼:`），存至 `public/chats/<id>.json`。影片頁會在播放器右側依播放時間重播聊天室（窄螢幕顯示於影片下方），可由工具列開關，全螢幕時同樣顯示於右側。
 2. **字幕與說話人**
-   - **字幕檔**：選擇或拖曳 .srt／.ass 檔。Big5、UTF-16 會自動辨識，發布時轉存為 UTF-8；出現亂碼時可手動切換編碼。.ass 檔會轉為 SRT，`Name` 欄位作為說話人，開始與結束時間相同的多行（例如雙語字幕）合併為同一句。
+   - **字幕檔（多語）**：中文、English、日本語各一個欄位，至少上傳一種。每種語言各自選檔、設定編碼，也可以移除；編輯既有影片時移除某種語言，發布時會從 repo 刪除該字幕檔。說話人顏色會把所有語言的說話人合併列出。
+     每個字幕檔：選擇或拖曳 .srt／.ass 檔。Big5、UTF-16 會自動辨識，發布時轉存為 UTF-8；出現亂碼時可手動切換編碼。.ass 檔會轉為 SRT，`Name` 欄位作為說話人，開始與結束時間相同的多行（例如雙語字幕）合併為同一句。
    - **說話人顏色**：為每位說話人選擇調色盤顏色，或以「自訂」設定兩個色階（附對比檢查與字幕樣式預覽）。右側預覽即時更新。
 3. **註釋（選填）**：每則包含時間、內容與選填的連結（有連結時，影片頁會在註釋文字最後加上外連連結，開新分頁）。新增時自動帶入預覽目前的播放時間，也可手動輸入 `1:23`、`1:02:03`、`83.5`。時間落在某句字幕內時，該句字幕出現時會標示（*編號），點選影片頁的編號會跳至該句字幕開頭；沒有字幕的時間僅列於影片頁下方，點選編號會跳至註釋時間。註釋可匯出為 JSON 檔備份，之後再匯入。
 4. **連線與發布**
@@ -81,7 +83,7 @@ npm run build      # 會先自動執行 check:subs
 
 ## 手動新增影片
 
-1. 將字幕檔放入 `public/subtitles/`，並**儲存為 UTF-8**。
+1. 將字幕檔放入 `public/subtitles/`，並**儲存為 UTF-8**。多語字幕建議命名為 `<id>.zh.srt`、`<id>.en.srt`、`<id>.ja.srt`。
 2. 於 `src/data/videos.json` 新增一筆：
 
 ```json
@@ -91,7 +93,10 @@ npm run build      # 會先自動執行 check:subs
   "list": "nijisanji",
   "title": "影片標題",
   "description": "列表與影片頁顯示的說明（選填）",
-  "subtitle": "subtitles/my-video.srt",
+  "subtitles": {
+    "zh": "subtitles/my-video.zh.srt",
+    "en": "subtitles/my-video.en.srt"
+  },
   "tags": ["訪談", "科技"],
   "speakers": {
     "主持人": "gold",
@@ -106,7 +111,7 @@ npm run build      # 會先自動執行 check:subs
 | `youtubeId` | 是 | YouTube 網址 `watch?v=` 後的 11 個字元 |
 | `list` | 否 | 所屬列表：`nijisanji`（にじさんじ）或 `nijisanji-en`（NIJISANJI EN）。未設定時歸在 `nijisanji`；填入其他值時 `npm run check:subs` 會報錯 |
 | `title` | 是 | 標題 |
-| `subtitle` | 是 | 相對於 `public/` 的字幕檔路徑 |
+| `subtitles` | 是 | 各語言字幕檔的路徑（相對於 `public/`）：`zh` 中文、`en` English、`ja` 日本語，至少一種。舊格式的單一 `subtitle` 仍可讀取，視為中文 |
 | `description` | 否 | 說明文字，換行會保留；`[文字](https://…)` 會顯示為超連結 |
 | `tags` | 否 | 標籤，字串陣列。顯示於影片頁，列表頁可依標籤篩選 |
 | `speakers` | 否 | 說話人顏色，見下方。名稱須與字幕中的 `<v 名字>` 完全一致 |
@@ -216,6 +221,7 @@ npm run build      # 會先自動執行 check:subs
 - 參考 [siloor/youtube.external.subtitle](https://github.com/siloor/youtube.external.subtitle) 的做法：透過 YouTube IFrame Player API 讀取播放時間，將字幕層疊在 iframe 上。
 - YouTube 的原生全螢幕只會放大 iframe，外掛字幕會被遮蓋，因此以 `fs: 0` 關閉原生全螢幕，改由自訂的全螢幕按鈕放大整個播放器容器。iPhone Safari 不支援一般元素的全螢幕，會改為鋪滿視窗。
 - 字幕字級隨播放器高度縮放（CSS container query）。
+- 多語字幕：勾選的語言合併成一條時間軸，用同一個同步迴圈；字幕層依語言分組，由上到下為中文、English、日本語。為了不遮擋畫面：兩種語言時整體縮小為 90%、三種為 82%；第一個勾選的是主語言，其他語言再小一級；字幕區塊最高佔畫面一半，超過時從上方裁切。註釋標示（*編號）只標在主語言。
 
 ## 專案結構
 
@@ -224,6 +230,7 @@ public/subtitles/        字幕檔
 src/data/videos.json     影片清單與說話人顏色
 src/data/tags.json       標籤顏色
 src/lib/srt.js           SRT + 說話人解析
+src/lib/subtitleTracks.js  多語字幕：語言定義、合併時間軸、相容舊格式
 src/lib/ass.js           ASS／SSA 轉 SRT
 src/lib/lists.js         影片列表（にじさんじ／NIJISANJI EN）的定義
 src/lib/speakers.js      調色盤與配色邏輯

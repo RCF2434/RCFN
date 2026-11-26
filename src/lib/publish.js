@@ -1,4 +1,5 @@
 import { TAGS_PATH, VIDEOS_PATH } from './github.js';
+import { videoSubtitles } from './subtitleTracks.js';
 
 export const ID_RE = /^[\w-]+$/;
 
@@ -24,9 +25,11 @@ export function serializeVideos(videos) {
 
 /**
  * 把字幕檔與 videos.json 寫進同一個 commit。
+ * subtitleFiles：各語言的字幕檔 [{ path: 'public/…', content }]；
+ * extraFiles：其他要寫入或刪除的檔案（聊天室紀錄、移除的語言字幕）。
  * 每次都從分支最新的 videos.json 重新套用，分支在途中被更新時自動重試。
  */
-export async function publishVideo(gh, { branch, entry, subtitleText, mode, extraFiles = [] }) {
+export async function publishVideo(gh, { branch, entry, subtitleFiles, mode, extraFiles = [] }) {
   const verb = mode === 'create' ? '新增' : '更新';
   for (let attempt = 1; ; attempt += 1) {
     const head = await gh.getHead(branch);
@@ -37,7 +40,7 @@ export async function publishVideo(gh, { branch, entry, subtitleText, mode, extr
         head,
         message: `${verb}影片：${entry.title}\n\n由 RCFN · にじさんじ非官方字幕的發布頁送出。`,
         files: [
-          { path: `public/${entry.subtitle}`, content: subtitleText },
+          ...subtitleFiles,
           { path: VIDEOS_PATH, content: serializeVideos(videos) },
           ...extraFiles,
         ],
@@ -58,8 +61,10 @@ export function removeVideo(videos, id) {
   if (index === -1) throw new Error(`repo 裡已經沒有「${id}」這支影片，可能已被刪除，請重新讀取。`);
   const removed = videos[index];
   const rest = videos.filter((_, i) => i !== index);
-  const inUse = new Set(rest.flatMap((video) => [video.subtitle, video.chat]).filter(Boolean));
-  const files = [removed.subtitle, removed.chat]
+  // 每支影片用到的檔案：各語言字幕（相容舊的 subtitle）＋聊天室紀錄
+  const filesOf = (video) => [...Object.values(videoSubtitles(video)), video.subtitle, video.chat];
+  const inUse = new Set(rest.flatMap(filesOf).filter(Boolean));
+  const files = [...new Set(filesOf(removed))]
     .filter((path) => typeof path === 'string' && path && !inUse.has(path))
     .map((path) => `public/${path.replace(/^\/+/, '')}`);
   return { videos: rest, removed, files };

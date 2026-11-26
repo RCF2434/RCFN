@@ -5,7 +5,9 @@
     "list": "nijisanji",
     "title": "作曲中のリアル #Shorts #にじさんじ #山田龍一郎",
     "description": "僕はずっとこのループなのですが、クリエイターの皆さんはいかがでしょうか",
-    "subtitle": "subtitles/WIgRtzcz2EI.srt",
+    "subtitles": {
+      "zh": "subtitles/WIgRtzcz2EI.srt"
+    },
     "tags": [
       "Shorts",
       "山田龍一郎"
@@ -30,7 +32,9 @@
     "list": "nijisanji-en",
     "title": "【🎤✨】my first ever karaoke (Singing Stream!)【NIJISANJI EN | Shu Yamino】",
     "description": "moosic\n\nMicrophone by @AlzuraKyler, and\nThumbnail illustration by @hyu_art on twitter! Thank you very much!!\n--------------------------------------------------------------------\nSet List:\nHibana / DECO*27\nYONA YONA DANCE / Akiko Wada (和田アキ子 X フレデリック)\nGoodbye Sengen / Chinozo\nphony / Tsumiki\nOnomatopetenshi / teniwoha\nLION / May'n & Ai Nakajima (inst:   • [【カラオケ】ライオン - May'n/中島愛【オフボーカル】｜「マクロスF」オープニング ](https://www.youtube.com/watch?v=DHmGYFXr0Oc) )\nLove & Destroy / MI8k\nラブカ? / 柊キライ\nSeparate / Police Piccadilly\nKimi no Shiranai Monogatari / supercell (inst:    • [【カラオケ】君の知らない物語 - supercell【オフボーカル】｜アニメ『化物語...](https://www.youtube.com/watch?v=AnF9xIdLxSA)  )",
-    "subtitle": "subtitles/rA9oU3kImyk.srt",
+    "subtitles": {
+      "zh": "subtitles/rA9oU3kImyk.srt"
+    },
     "speakers": {
       "中": "ivory"
     },

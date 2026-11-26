@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ExternalLink, FileText, Send, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ExternalLink, Send } from 'lucide-react';
 import { clearDraft, openPreview, shareDraft } from '../lib/previewDraft.js';
 import { ID_RE, publicSiteUrl, publishVideo } from '../lib/publish.js';
 import { EMBED_BLOCKED, fetchOEmbed, parseYouTubeId } from '../lib/youtube.js';
-import { parseSRT, formatTime } from '../lib/srt.js';
+import { parseSRT } from '../lib/srt.js';
 import { assToSRT, isASS } from '../lib/ass.js';
 import { resolveSpeakerColors, toSpeakerColor } from '../lib/speakers.js';
+import { MAX_SUBTITLE_BYTES, decodeSubtitle, normalizeSubtitle } from '../lib/subtitleFile.js';
 import {
-  ENCODINGS,
-  MAX_SUBTITLE_BYTES,
-  decodeSubtitle,
-  encodingLabel,
-  normalizeSubtitle,
-} from '../lib/subtitleFile.js';
+  LANG_BY_KEY,
+  SUB_LANGS,
+  referenceCues,
+  sortLangs,
+  subtitlePath,
+  unionSpeakers,
+  videoSubtitles,
+} from '../lib/subtitleTracks.js';
+import { subtitlesFromDraft } from '../lib/publishDraft.js';
+import SubtitleSlot from '../components/publish/SubtitleSlot.jsx';
 import { useDeployWatcher } from '../hooks/useDeployWatcher.js';
 import { useGitHubConnection } from '../hooks/useGitHubConnection.js';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
@@ -37,6 +42,30 @@ import { collectTags } from '../lib/tags.js';
 import { videoChannels, videos as bundledVideos } from '../lib/videos.js';
 
 const EMPTY = [];
+const NO_SUBS = {};
+
+/** 字幕欄位狀態 → 解碼後的文字（ASS 會轉成 SRT）；還沒讀到內容時回傳 null */
+function decodeSub(sub, encoding) {
+  if (sub?.buffer) {
+    const result = decodeSubtitle(sub.buffer, encoding);
+    if (!isASS(sub.name, result.text)) return result;
+    // ASS 檔：轉成 SRT，之後的預覽與發布都用轉好的內容
+    const converted = assToSRT(result.text);
+    return { ...result, text: converted.text, convertedFrom: 'ASS', warnings: converted.warnings };
+  }
+  if (typeof sub?.text === 'string') return { text: sub.text, encoding: 'utf-8', garbled: false };
+  return null;
+}
+
+/** 對物件的每個值套用 fn，略過結果為 null 的 */
+function mapValues(obj, fn) {
+  const out = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const result = fn(value, key);
+    if (result != null) out[key] = result;
+  }
+  return out;
+}
 // list：所屬列表（見 lib/lists.js），新增影片時必須選擇
 const EMPTY_FORM = { url: '', title: '', description: '', id: '', list: '' };
 /** 發布分成四頁，填完一頁按下一步 */
@@ -58,8 +87,9 @@ export default function PublishPage({ editId = null }) {
   const [target, setTarget] = useState(editId ?? ''); // '' = 新增；否則為要更新的影片 id
   const [form, setForm] = useState(EMPTY_FORM);
   const [idTouched, setIdTouched] = useState(false);
-  const [sub, setSub] = useState(null); // { name, source: 'file' | 'repo', buffer?, text?, loading?, error? }
-  const [encoding, setEncoding] = useState('auto');
+  // 各語言的字幕檔：{ zh?: 欄位狀態, en?, ja? }，欄位狀態為 { name, source: 'file' | 'repo', buffer?, text?, loading?, error? }
+  const [subs, setSubs] = useState(NO_SUBS);
+  const [encodings, setEncodings] = useState({}); // 各語言的檔案編碼，預設 auto
   const [overrides, setOverrides] = useState({});
   const [tags, setTags] = useState(EMPTY);
   const [channels, setChannels] = useState(EMPTY);
@@ -68,7 +98,6 @@ export default function PublishPage({ editId = null }) {
   const [keptChat, setKeptChat] = useState(null); // repo 裡已有的聊天室紀錄（給預覽用）
   const previewRef = useRef(null);
   const [job, setJob] = useState(null);
-  const [dragging, setDragging] = useState(false);
   const loadSeq = useRef(0);
 
   const existing = target ? conn.videos?.find((v) => v.id === target) ?? null : null;
@@ -110,12 +139,12 @@ export default function PublishPage({ editId = null }) {
     const seq = ++loadSeq.current;
     setTarget(value);
     setJob(null);
-    setEncoding('auto');
+    setEncodings({});
     const entry = value ? conn.videos.find((v) => v.id === value) : null;
     if (!entry) {
       setForm(EMPTY_FORM);
       setIdTouched(false);
-      setSub(null);
+      setSubs(NO_SUBS);
       setOverrides({});
       setTags(EMPTY);
       setChannels(EMPTY);
@@ -136,14 +165,23 @@ export default function PublishPage({ editId = null }) {
     setChannels(channelRows(videoChannels(entry)));
     setNotes(noteRows(entry.notes));
     setChat(chatState(entry.chat));
-    const name = entry.subtitle.split('/').pop();
-    setSub({ name, source: 'repo', loading: true });
-    try {
-      const text = await conn.gh.readText(`public/${entry.subtitle}`, conn.headSha);
-      if (seq === loadSeq.current) setSub({ name, source: 'repo', text });
-    } catch (err) {
-      if (seq === loadSeq.current) setSub({ name, source: 'repo', error: `讀不到 repo 裡的字幕檔：${err.message}` });
-    }
+    // 各語言的字幕檔一起從 repo 讀進來（舊格式的單一 subtitle 視為中文）
+    const files = Object.entries(videoSubtitles(entry));
+    const nameOf = (path) => path.split('/').pop();
+    setSubs(Object.fromEntries(files.map(([lang, path]) => [lang, { name: nameOf(path), source: 'repo', loading: true }])));
+    await Promise.all(
+      files.map(async ([lang, path]) => {
+        let next;
+        try {
+          next = { name: nameOf(path), source: 'repo', text: await conn.gh.readText(`public/${path}`, conn.headSha) };
+        } catch (err) {
+          next = { name: nameOf(path), source: 'repo', error: `讀不到 repo 裡的${LANG_BY_KEY[lang].label}字幕檔：${err.message}` };
+        }
+        if (seq !== loadSeq.current) return;
+        // 讀取期間已經換了檔案或移除的，不要蓋掉
+        setSubs((s) => (s[lang]?.loading && s[lang].source === 'repo' ? { ...s, [lang]: next } : s));
+      }),
+    );
   }
 
   // 編輯頁：連線後載入這支影片（只載入一次；更新後 repo 版本前進也不會蓋掉正在編輯的內容）
@@ -156,34 +194,35 @@ export default function PublishPage({ editId = null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing, editId, conn.status, conn.videos]);
 
-  async function acceptFile(file) {
+  async function acceptFile(lang, file) {
     if (!file) return;
-    ++loadSeq.current;
     setJob(null);
     if (file.size > MAX_SUBTITLE_BYTES) {
-      setSub({ name: file.name, source: 'file', error: '檔案超過 2 MB，不是有效的字幕檔。' });
+      setSubs((s) => ({ ...s, [lang]: { name: file.name, source: 'file', error: '檔案超過 2 MB，不是有效的字幕檔。' } }));
       return;
     }
     const buffer = await file.arrayBuffer();
-    setEncoding('auto');
-    setSub({ name: file.name, source: 'file', buffer });
+    setEncodings((e) => ({ ...e, [lang]: 'auto' }));
+    setSubs((s) => ({ ...s, [lang]: { name: file.name, source: 'file', buffer } }));
   }
 
-  /* ---------- 解析字幕與配色 ---------- */
-  const decoded = useMemo(() => {
-    if (sub?.buffer) {
-      const result = decodeSubtitle(sub.buffer, encoding);
-      if (!isASS(sub.name, result.text)) return result;
-      // ASS 檔：轉成 SRT，之後的預覽與發布都用轉好的內容
-      const converted = assToSRT(result.text);
-      return { ...result, text: converted.text, convertedFrom: 'ASS', warnings: converted.warnings };
-    }
-    if (typeof sub?.text === 'string') return { text: sub.text, encoding: 'utf-8', garbled: false };
-    return null;
-  }, [sub, encoding]);
-  const parsed = useMemo(() => (decoded ? parseSRT(decoded.text) : null), [decoded]);
-  const subWarnings = [...(decoded?.warnings ?? []), ...(parsed?.warnings ?? [])];
-  const speakers = parsed?.speakers ?? EMPTY;
+  function removeSub(lang) {
+    setJob(null);
+    setSubs((s) => {
+      const next = { ...s };
+      delete next[lang];
+      return next;
+    });
+  }
+
+  /* ---------- 解析字幕與配色（每種語言各自解碼、解析） ---------- */
+  const decodedByLang = useMemo(() => mapValues(subs, (sub, lang) => decodeSub(sub, encodings[lang] ?? 'auto')), [subs, encodings]);
+  // tracks：解析好的語言 → { cues, speakers, warnings }，預覽播放器與新分頁預覽共用
+  const tracks = useMemo(() => mapValues(decodedByLang, (decoded) => parseSRT(decoded.text)), [decodedByLang]);
+  const trackLangs = sortLangs(Object.keys(tracks));
+  const speakers = useMemo(() => unionSpeakers(tracks), [tracks]);
+  // 註釋以第一種有字幕的語言為準（和影片頁一致）
+  const refCues = useMemo(() => referenceCues(tracks), [tracks]);
 
   const activeOverrides = useMemo(
     () => Object.fromEntries(Object.entries(overrides).filter(([name]) => speakers.includes(name))),
@@ -256,10 +295,14 @@ export default function PublishPage({ editId = null }) {
     else if (conn.videos?.some((v) => v.id === id)) videoP.push(`網址代稱「${id}」已經被使用，請換一個`);
   }
   videoP.push(...channelProblems(channels));
-  if (!sub) subP.push('選擇字幕檔');
-  else if (sub.loading) subP.push('字幕檔讀取中');
-  else if (sub.error) subP.push('換一個字幕檔');
-  else if (parsed && !parsed.cues.length) subP.push('字幕檔裡讀不到任何字幕');
+  const subLangs = sortLangs(Object.keys(subs));
+  if (!subLangs.length) subP.push('至少上傳一種語言的字幕檔');
+  for (const lang of subLangs) {
+    const label = LANG_BY_KEY[lang].label;
+    if (subs[lang].loading) subP.push(`${label}字幕讀取中`);
+    else if (subs[lang].error) subP.push(`${label}：換一個字幕檔，或移除`);
+    else if (tracks[lang] && !tracks[lang].cues.length) subP.push(`${label}字幕裡讀不到任何字幕`);
+  }
   notesP.push(...notesProblems(notes));
   if (conn.status !== 'ready') publishP.push('連線 GitHub');
   const problems = pageProblems.flatMap((list, page) => list.map((text) => ({ page, text })));
@@ -305,10 +348,10 @@ export default function PublishPage({ editId = null }) {
         channels: readyChannels,
         overrides,
         notes: draftNotes,
-        encoding,
+        encodings,
         page,
       },
-      sub,
+      sub: subs,
       chat,
       hasContent: Boolean(
         form.url.trim() ||
@@ -317,7 +360,7 @@ export default function PublishPage({ editId = null }) {
           tags.length ||
           readyChannels.length ||
           draftNotes.length ||
-          sub ||
+          subLangs.length ||
           chat.mode !== 'none',
       ),
     },
@@ -329,8 +372,9 @@ export default function PublishPage({ editId = null }) {
       setChannels(channelRows(f.channels));
       setOverrides(f.overrides ?? {});
       setNotes(textRows(f.notes));
-      setEncoding(f.encoding ?? 'auto');
-      if (saved.sub) setSub(saved.sub);
+      // 舊草稿只有一個字幕檔與 encoding，視為中文
+      setEncodings(f.encodings ?? (f.encoding ? { zh: f.encoding } : {}));
+      setSubs(subtitlesFromDraft(saved.sub));
       if (saved.chat) setChat(saved.chat);
       const restoredPage = Math.min(Math.max(Number(f.page) || 0, 0), PAGES.length - 1);
       setPage(restoredPage);
@@ -353,6 +397,19 @@ export default function PublishPage({ editId = null }) {
     setVisited(new Set([0]));
   }
 
+  // 字幕檔路徑：已經在 repo 裡的沿用原路徑（舊影片的中文是 subtitles/<id>.srt），新的用 subtitles/<id>.<語言>.srt
+  const existingSubtitles = videoSubtitles(existing);
+  const readyLangs = sortLangs(Object.keys(decodedByLang));
+  const subtitlePaths = Object.fromEntries(readyLangs.map((lang) => [lang, existingSubtitles[lang] ?? subtitlePath(id, lang)]));
+  // 要寫入的字幕檔，以及這次移除的語言（從 repo 刪掉）
+  const subtitleFiles = readyLangs.map((lang) => ({
+    path: `public/${subtitlePaths[lang]}`,
+    content: normalizeSubtitle(decodedByLang[lang].text),
+  }));
+  const removedSubtitleFiles = Object.entries(existingSubtitles)
+    .filter(([lang]) => !subs[lang])
+    .map(([, path]) => ({ path: `public/${path}`, delete: true }));
+
   // 要寫進 videos.json 的這一筆；發布與新分頁預覽共用
   const description = form.description.trim();
   const entry = {
@@ -361,7 +418,8 @@ export default function PublishPage({ editId = null }) {
     list: isListKey(form.list) ? form.list : undefined,
     title: form.title.trim(),
     description: description || undefined,
-    subtitle: existing?.subtitle ?? `subtitles/${id}.srt`,
+    subtitles: readyLangs.length ? subtitlePaths : undefined,
+    subtitle: undefined, // 舊格式，一律改存 subtitles
     speakers: speakers.length ? speakerConfig : undefined,
     tags: tags.length ? tags : undefined,
     channels: channels.some((r) => r.status === 'ready')
@@ -383,12 +441,12 @@ export default function PublishPage({ editId = null }) {
     }
     shareDraft({
       video: JSON.parse(entryKey),
-      subs: parsed
-        ? { status: 'ready', error: null, cues: parsed.cues, speakers: parsed.speakers }
-        : { status: 'idle', error: null, cues: EMPTY, speakers: EMPTY },
+      subs: { status: trackLangs.length ? 'ready' : 'idle', tracks, speakers, errors: {}, error: null },
       chat: previewChat,
     });
-  }, [youtubeId, entryKey, parsed, previewChat]);
+    // trackLangs、speakers 都由 tracks 算出
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [youtubeId, entryKey, tracks, previewChat]);
   useEffect(() => clearDraft, []);
 
   async function publish() {
@@ -398,8 +456,8 @@ export default function PublishPage({ editId = null }) {
       const result = await publishVideo(conn.gh, {
         branch: settings.branch,
         entry,
-        subtitleText: normalizeSubtitle(decoded.text),
-        extraFiles: chatFiles,
+        subtitleFiles,
+        extraFiles: [...removedSubtitleFiles, ...chatFiles],
         mode,
       });
       setConn((c) => ({ ...c, videos: result.videos, headSha: result.commitSha }));
@@ -425,7 +483,6 @@ export default function PublishPage({ editId = null }) {
   const tagSuggestions = useMemo(() => collectTags(conn.videos ?? bundledVideos), [conn.videos]);
 
   const siteUrl = settings.owner && settings.repo ? publicSiteUrl(settings.owner, settings.repo) : '';
-  const duration = parsed?.cues.at(-1)?.end;
 
   return (
     <div className="container publish-page">
@@ -678,105 +735,29 @@ export default function PublishPage({ editId = null }) {
             <div>
               <p className="eyebrow">Subtitles</p>
               <h2 id={`${uid}-sub`} className="panel__title">
-                字幕檔
+                字幕檔（多語）
               </h2>
             </div>
 
-            <label
-              className={`dropzone${dragging ? ' is-dragging' : ''}`}
-              onDragEnter={() => setDragging(true)}
-              onDragLeave={() => setDragging(false)}
-              onDrop={() => setDragging(false)}
-            >
-              <input
-                type="file"
-                accept=".srt,.ass,.ssa,.txt"
-                disabled={busy}
-                onChange={(event) => {
-                  acceptFile(event.target.files?.[0]);
-                  event.target.value = '';
-                }}
-              />
-              <Upload size={24} aria-hidden="true" />
-              <strong>{sub ? '換一個字幕檔' : '選擇 .srt 或 .ass 檔'}</strong>
-              <span>或將檔案拖曳至此；.ass 會自動轉為 .srt，Name 欄位作為說話人</span>
-            </label>
-
-            {sub && (
-              <div className="sub-file">
-                <p className="sub-file__name">
-                  <FileText size={16} aria-hidden="true" />
-                  <span className="mono">{sub.name}</span>
-                  {sub.source === 'repo' && <span className="muted">（目前 repo 裡的檔案）</span>}
-                  {decoded?.convertedFrom && (
-                    <span className="muted">（已從 {decoded.convertedFrom} 轉成 SRT，發布時存成 .srt）</span>
-                  )}
-                </p>
-
-                {sub.loading && <p className="muted">讀取中…</p>}
-                {sub.error && (
-                  <p className="notice notice--error" role="alert">
-                    {sub.error}
-                  </p>
-                )}
-
-                {sub.buffer && (
-                  <div className="field">
-                    <label className="field__label" htmlFor={`${uid}-enc`}>
-                      檔案編碼
-                    </label>
-                    <div className="select">
-                      <select
-                        id={`${uid}-enc`}
-                        className="input"
-                        value={encoding}
-                        onChange={(event) => setEncoding(event.target.value)}
-                      >
-                        {ENCODINGS.map((e) => (
-                          <option key={e.key} value={e.key}>
-                            {e.key === 'auto' ? `自動判斷（${encodingLabel(decoded?.encoding)}）` : e.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={18} aria-hidden="true" />
-                    </div>
-                    <p className={`field__hint${decoded?.garbled ? ' field__hint--error' : ''}`}>
-                      {decoded?.garbled
-                        ? '疑似有亂碼，請改用其他編碼。'
-                        : '發布時會轉存為 UTF-8。預覽出現亂碼時，請改用其他編碼。'}
-                    </p>
-                  </div>
-                )}
-
-                {parsed && (
-                  <dl className="meta">
-                    <div>
-                      <dt>句數</dt>
-                      <dd className="mono">{parsed.cues.length}</dd>
-                    </div>
-                    <div>
-                      <dt>字幕長度</dt>
-                      <dd className="mono">{formatTime(duration)}</dd>
-                    </div>
-                    <div>
-                      <dt>說話人</dt>
-                      <dd className="mono">{speakers.length}</dd>
-                    </div>
-                  </dl>
-                )}
-
-                {subWarnings.length > 0 && (
-                  <details className="notice notice--warning">
-                    <summary>有 {subWarnings.length} 個格式問題（不影響發布，有問題的段落會略過）</summary>
-                    <ul>
-                      {subWarnings.map((warning) => (
-                        <li key={warning}>{warning}</li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </div>
-            )}
+            <p className="panel__text muted">
+              中文、English、日本語至少上傳一種。觀眾可以在播放器工具列勾選要顯示哪些語言，同時看雙語或三語字幕。
+            </p>
+            <div className="sub-slots">
+              {SUB_LANGS.map(({ key }) => (
+                <SubtitleSlot
+                  key={key}
+                  lang={key}
+                  sub={subs[key]}
+                  encoding={encodings[key] ?? 'auto'}
+                  onEncoding={(value) => setEncodings((e) => ({ ...e, [key]: value }))}
+                  decoded={decodedByLang[key]}
+                  parsed={tracks[key]}
+                  onFile={(file) => acceptFile(key, file)}
+                  onRemove={() => removeSub(key)}
+                  disabled={busy}
+                />
+              ))}
+            </div>
           </section>
 
           {/* ---------- 說話人顏色 ---------- */}
@@ -787,8 +768,8 @@ export default function PublishPage({ editId = null }) {
                 說話人顏色
               </h2>
             </div>
-            {!parsed ? (
-              <p className="muted">選擇字幕檔後，此處會列出字幕中的說話人。</p>
+            {!trackLangs.length ? (
+              <p className="muted">選擇字幕檔後，此處會列出字幕中的說話人（所有語言合併列出）。</p>
             ) : speakers.length === 0 ? (
               <p className="muted">
                 字幕中沒有說話人標記，所有字幕會以中性色顯示。如需分色，請在字幕行開頭加上{' '}
@@ -833,7 +814,7 @@ export default function PublishPage({ editId = null }) {
             <NotesEditor
               value={notes}
               onChange={setNotes}
-              cues={parsed?.cues ?? EMPTY}
+              cues={refCues}
               getCurrentTime={youtubeId ? () => previewRef.current?.getCurrentTime() : null}
               onPreview={(time) => previewRef.current?.seekTo(time)}
               disabled={busy}
@@ -966,7 +947,8 @@ export default function PublishPage({ editId = null }) {
             <SubtitlePlayer
               ref={previewRef}
               youtubeId={youtubeId}
-              cues={parsed?.cues ?? EMPTY}
+              tracks={tracks}
+              languages={trackLangs}
               colors={colors}
               notes={previewNotes}
               chat={previewChat}
@@ -977,7 +959,7 @@ export default function PublishPage({ editId = null }) {
               <p>填入 YouTube 網址後，影片和字幕會出現在這裡。</p>
             </div>
           )}
-          {youtubeId && !parsed && <p className="field__hint">選擇字幕檔後，字幕會疊在影片上。</p>}
+          {youtubeId && !trackLangs.length && <p className="field__hint">選擇字幕檔後，字幕會疊在影片上。</p>}
           <div className="publish-preview__actions">
             <button type="button" className="btn btn--ghost" onClick={openPreview} disabled={!youtubeId}>
               <ExternalLink size={16} aria-hidden="true" />

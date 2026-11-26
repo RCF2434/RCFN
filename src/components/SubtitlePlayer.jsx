@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Maximize, Minimize } from 'lucide-react';
 import { useYouTubePlayer } from '../hooks/useYouTubePlayer.js';
 import { useActiveCues } from '../hooks/useActiveCues.js';
@@ -8,6 +8,8 @@ import { useStoredState } from '../hooks/useStoredState.js';
 import { PALETTE } from '../lib/speakers.js';
 import { BUFFERING, PLAYING } from '../lib/youtube.js';
 import { noteMarkers } from '../lib/notes.js';
+import { initialLangs, isSubLang, mergeTracks, sortLangs } from '../lib/subtitleTracks.js';
+import SubtitleLangPicker from './SubtitleLangPicker.jsx';
 import SubtitleOverlay from './SubtitleOverlay.jsx';
 import StyleSwitcher, { SUB_STYLE_KEYS } from './StyleSwitcher.jsx';
 import SizeSlider, { DEFAULT_SUB_SIZE, SUB_SIZES, isSubSize } from './SizeSlider.jsx';
@@ -15,17 +17,53 @@ import ChatPanel from './ChatPanel.jsx';
 import Toggle from './Toggle.jsx';
 
 const NO_NOTES = [];
+const NO_LANGS = [];
+const isStoredLangs = (v) => v === null || (Array.isArray(v) && v.every(isSubLang));
 
 /**
+ * tracks：{ zh?: { cues }, en?: …, ja?: … }；languages：這支影片有的語言（固定順序）
+ *   工具列可以勾選要顯示哪些語言（雙語、三語），選擇會記在瀏覽器
  * onStatus：播放器載入或出錯時回報 { ready, errorCode }，發布頁用來檢查影片能不能嵌入
  * notes：numberNotes() 整理過的註釋，字幕上會標示（*編號）
  * ref：{ seekTo(秒數), getCurrentTime() }，給註釋連結跳時間、發布頁取目前時間
  * chat：useChat() 的結果；有給才會出現聊天室與工具列的開關
  */
-export default function SubtitlePlayer({ youtubeId, cues, colors, onStatus, notes = NO_NOTES, chat, ref }) {
+export default function SubtitlePlayer({
+  youtubeId,
+  tracks,
+  languages = NO_LANGS,
+  colors,
+  onStatus,
+  notes = NO_NOTES,
+  chat,
+  ref,
+}) {
   const shellRef = useRef(null);
   const { hostRef, playerRef, ready, error, errorCode, playerState } = useYouTubePlayer(youtubeId);
-  const markers = useMemo(() => noteMarkers(cues, notes), [cues, notes]);
+
+  /* ---------- 字幕語言：勾選的語言合併成一條時間軸 ---------- */
+  const [storedLangs, setStoredLangs] = useStoredState('sub-langs', null, isStoredLangs);
+  const langKey = languages.join(',');
+  const [selected, setSelected] = useState(() => initialLangs(storedLangs, languages));
+  // 換影片（可用語言改變）時，依上次的偏好重新決定
+  useEffect(() => {
+    setSelected(initialLangs(storedLangs, languages));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [langKey]);
+  // 用 langKey（內容）當依賴：呼叫端每次傳新陣列也不會讓時間軸重建、字幕閃爍
+  const visibleLangs = useMemo(
+    () => sortLangs(selected.filter((key) => langKey.split(',').includes(key))),
+    [selected, langKey],
+  );
+  const toggleLang = (key) => {
+    const next = sortLangs(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
+    setSelected(next);
+    setStoredLangs(next);
+  };
+  const cues = useMemo(() => mergeTracks(tracks, visibleLangs), [tracks, visibleLangs]);
+  // 註釋標示只標在主語言（第一個勾選的），不會每種語言各標一次
+  const primaryCues = useMemo(() => cues.filter((cue) => cue.lang === visibleLangs[0]), [cues, visibleLangs]);
+  const markers = useMemo(() => noteMarkers(primaryCues, notes), [primaryCues, notes]);
 
   useImperativeHandle(
     ref,
@@ -87,6 +125,7 @@ export default function SubtitlePlayer({ youtubeId, cues, colors, onStatus, note
         )}
         <SubtitleOverlay
           cues={active}
+          langs={visibleLangs}
           colors={colors}
           styleKey={subStyle}
           scale={SUB_SIZES[subSize].scale}
@@ -101,6 +140,9 @@ export default function SubtitlePlayer({ youtubeId, cues, colors, onStatus, note
       </div>
 
       <div className="player-toolbar">
+        {languages.length > 0 && (
+          <SubtitleLangPicker languages={languages} selected={visibleLangs} onToggle={toggleLang} />
+        )}
         <StyleSwitcher value={subStyle} onChange={setSubStyle} sample={sample} />
         <SizeSlider value={subSize} onChange={setSubSize} />
         {hasChat && (
