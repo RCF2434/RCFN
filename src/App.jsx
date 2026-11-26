@@ -5,6 +5,7 @@ import ListPage from './pages/ListPage.jsx';
 import { LISTS } from './lib/lists.js';
 import VideoPage from './pages/VideoPage.jsx';
 import NotFound from './pages/NotFound.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
 
 // 發布頁只在本機開發（npm run dev）時出現；上線版本（npm run build）不會有路由，也不會打包發布頁的程式碼。
 // 想讓上線版本也有發布頁，建置時設環境變數 VITE_PUBLISH_PAGE=true。
@@ -47,6 +48,7 @@ export default function App() {
           ),
         )}
         <Route path="video/:id" element={<VideoPage />} />
+        <Route path="privacy" element={<PrivacyPage />} />
         {PublishPage && (
           <Route
             path="publish"

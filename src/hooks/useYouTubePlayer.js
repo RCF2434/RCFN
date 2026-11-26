@@ -32,6 +32,8 @@ export function useYouTubePlayer(videoId) {
       .then((YT) => {
         if (cancelled) return;
         playerRef.current = new YT.Player(mount, {
+          // 隱私強化模式：觀眾按下播放前，YouTube 不會儲存造訪者的資訊（見隱私說明頁）
+          host: 'https://www.youtube-nocookie.com',
           videoId,
           width: '100%',
           height: '100%',

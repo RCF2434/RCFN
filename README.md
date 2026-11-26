@@ -220,6 +220,7 @@ npm run build      # 會先自動執行 check:subs
 
 - 參考 [siloor/youtube.external.subtitle](https://github.com/siloor/youtube.external.subtitle) 的做法：透過 YouTube IFrame Player API 讀取播放時間，將字幕層疊在 iframe 上。
 - YouTube 的原生全螢幕只會放大 iframe，外掛字幕會被遮蓋，因此以 `fs: 0` 關閉原生全螢幕，改由自訂的全螢幕按鈕放大整個播放器容器。iPhone Safari 不支援一般元素的全螢幕，會改為鋪滿視窗。
+- YouTube 播放器使用隱私強化模式（`host: youtube-nocookie.com`）。網站本身不用 cookie、不放分析工具，只用 localStorage 記住觀眾的偏好；隱私說明頁在 `/privacy`（`src/pages/PrivacyPage.jsx`），新增分析工具、第三方服務或改變儲存的資料時要一起更新。
 - 字幕字級隨播放器高度縮放（CSS container query）。
 - 多語字幕：勾選的語言合併成一條時間軸，用同一個同步迴圈；字幕層依語言分組，由上到下為中文、English、日本語。為了不遮擋畫面：兩種語言時整體縮小為 90%、三種為 82%；第一個勾選的是主語言，其他語言再小一級；字幕區塊最高佔畫面一半，超過時從上方裁切。註釋標示（*編號）只標在主語言。
 

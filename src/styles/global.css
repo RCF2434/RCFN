@@ -3476,6 +3476,33 @@ code.mono {
   font-variant-numeric: tabular-nums;
 }
 
+/* ===== 隱私說明 ===== */
+.privacy-page {
+  padding-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+.privacy {
+  display: grid;
+  gap: var(--space-xl);
+  max-width: 68ch;
+}
+
+.privacy section {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.privacy h2 {
+  font-size: 1.15rem;
+}
+
+.privacy ul {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-left: 1.3rem;
+}
+
 /* ===== Motion ===== */
 @media (prefers-reduced-motion: reduce) {
   *,

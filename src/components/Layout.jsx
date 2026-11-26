@@ -59,6 +59,9 @@ export default function Layout() {
       <footer className="site-footer">
         <div className="container site-footer__inner">
           <span>RCFN · にじさんじ非官方字幕</span>
+          <Link to="/privacy" className="site-footer__link">
+            隱私說明
+          </Link>
           {(import.meta.env.DEV || import.meta.env.VITE_PUBLISH_PAGE === 'true') && (
             <>
               <Link to="/publish" className="site-footer__link">

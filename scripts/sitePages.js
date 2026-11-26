@@ -134,6 +134,9 @@ export function sitePages({ base, siteUrl }) {
         emit(`${dir}/index.html`, { ...siteMeta(site), title: `${list.label}｜${site.title}`, url: abs(`${dir}/`) });
       }
 
+      // 隱私說明
+      emit('privacy/index.html', { ...siteMeta(site), title: `隱私說明｜${site.title}`, url: abs('privacy/') });
+
       // 每支影片
       const videos = JSON.parse(readFileSync(path.join(root, 'src/data/videos.json'), 'utf8'));
       for (const video of Array.isArray(videos) ? videos : []) {
