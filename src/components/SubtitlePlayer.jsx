@@ -1,5 +1,5 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { Maximize, Minimize } from 'lucide-react';
+import { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Maximize, Minimize, Settings } from 'lucide-react';
 import { useYouTubePlayer } from '../hooks/useYouTubePlayer.js';
 import { useActiveCues } from '../hooks/useActiveCues.js';
 import { usePlaybackTime } from '../hooks/usePlaybackTime.js';
@@ -104,6 +104,36 @@ export default function SubtitlePlayer({
   const showChat = hasChat && chatOpen;
   const chatTime = usePlaybackTime(playerRef, ready && showChat);
 
+  /* ---------- 手機版的設定面板（齒輪） ---------- */
+  const settingsId = useId();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef(null);
+  const gearRef = useRef(null);
+  // 點面板外面或按 Esc 關閉（Esc 時焦點回到齒輪）
+  useEffect(() => {
+    if (!settingsOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (!settingsRef.current?.contains(event.target) && !gearRef.current?.contains(event.target)) {
+        setSettingsOpen(false);
+      }
+    };
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      setSettingsOpen(false);
+      gearRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [settingsOpen]);
+  // 開始播放就收起來（點影片本身時事件進不到這個頁面，所以用播放狀態判斷）
+  useEffect(() => {
+    if (playing) setSettingsOpen(false);
+  }, [playing]);
+
   const shellClass = [
     'player-shell',
     fullscreen.active && 'is-fs scheme-dark',
@@ -140,16 +170,31 @@ export default function SubtitlePlayer({
       </div>
 
       <div className="player-toolbar">
-        {languages.length > 0 && (
-          <SubtitleLangPicker languages={languages} selected={visibleLangs} onToggle={toggleLang} />
-        )}
-        <StyleSwitcher value={subStyle} onChange={setSubStyle} sample={sample} />
-        <SizeSlider value={subSize} onChange={setSubSize} />
-        {hasChat && (
-          <Toggle checked={chatOpen} onChange={setChatOpen}>
-            聊天室
-          </Toggle>
-        )}
+        {/* 手機版：設定收進齒輪，點開在工具列上方顯示面板（桌機版齒輪隱藏，設定直接排在工具列上） */}
+        <button
+          ref={gearRef}
+          type="button"
+          className="btn btn--icon player-settings-toggle"
+          aria-expanded={settingsOpen}
+          aria-controls={settingsId}
+          aria-label="字幕設定"
+          title="字幕設定"
+          onClick={() => setSettingsOpen((open) => !open)}
+        >
+          <Settings size={20} />
+        </button>
+        <div ref={settingsRef} id={settingsId} className={`player-settings${settingsOpen ? ' is-open' : ''}`}>
+          {languages.length > 0 && (
+            <SubtitleLangPicker languages={languages} selected={visibleLangs} onToggle={toggleLang} />
+          )}
+          <StyleSwitcher value={subStyle} onChange={setSubStyle} sample={sample} />
+          <SizeSlider value={subSize} onChange={setSubSize} />
+          {hasChat && (
+            <Toggle checked={chatOpen} onChange={setChatOpen}>
+              聊天室
+            </Toggle>
+          )}
+        </div>
         <button
           type="button"
           className="btn btn--icon player-toolbar__end"

@@ -153,6 +153,18 @@ main {
   font-size: 1.25rem;
   font-weight: 700;
   text-decoration: none;
+  /* 品牌名不折行；放不下時由下方的 media query 只留 RCFN */
+  white-space: nowrap;
+}
+
+/*
+ * 完整品牌名（RCFN · 非官方字幕）＋兩個列表＋主題按鈕排一行約需 530px，
+ * 再窄就只留 RCFN（比 480px 的手機頁首規則更早生效，留一點餘量）
+ */
+@media (max-width: 600px) {
+  .brand__sub {
+    display: none;
+  }
 }
 
 .site-nav__links {
@@ -175,10 +187,6 @@ main {
   .brand svg {
     width: 18px;
     height: 18px;
-  }
-
-  .brand__sub {
-    display: none;
   }
 
   .site-nav__links {
@@ -1135,6 +1143,130 @@ main {
 
 .player-toolbar__end {
   margin-left: auto;
+}
+
+/* 設定：桌機版直接排在工具列上（齒輪隱藏）；手機版收進齒輪，見下方 media query */
+.player-settings-toggle {
+  display: none;
+}
+
+.player-settings {
+  display: contents;
+}
+
+/*
+ * 手機版（窄螢幕，或手機橫拿高度不夠時）：工具列只留齒輪與全螢幕，
+ * 點齒輪在工具列上方浮出設定面板，像 YouTube 的設定選單。
+ */
+@media (max-width: 760px), (max-height: 500px) {
+  .player-toolbar {
+    position: relative;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-xs);
+  }
+
+  .player-settings-toggle {
+    display: inline-flex;
+  }
+
+  .player-settings-toggle[aria-expanded='true'] {
+    box-shadow: inset 3px 3px 8px var(--sh-dark);
+  }
+
+  .player-toolbar__end {
+    margin-left: 0;
+  }
+
+  .player-settings {
+    display: none;
+  }
+
+  .player-settings.is-open {
+    position: absolute;
+    right: 0.5rem;
+    bottom: calc(100% + 0.5rem);
+    z-index: 20;
+    display: grid;
+    gap: 0.6rem;
+    /* 依內容決定寬度，不再撐滿；太窄的螢幕才縮 */
+    width: max-content;
+    max-width: calc(100% - 1rem);
+    max-height: min(70dvh, 420px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--text);
+    /* 浮框不用擬物化的白色亮面，只留往下的深色陰影 */
+    box-shadow: 0 6px 20px var(--sh-dark);
+    animation: settings-in 0.15s var(--ease);
+    /* 面板裡的按鈕、凹槽也拿掉白色亮面（陰影組合要在同一個元素重新宣告才會生效） */
+    --convex: 4px 4px 12px var(--sh-dark);
+    --convex-strong: 6px 6px 16px var(--sh-dark);
+    --flat: 2px 2px 6px var(--sh-dark);
+    --concave: inset 3px 3px 8px var(--sh-dark);
+  }
+
+  /* 面板裡每個設定都顯示標題（全螢幕時工具列原本會把標題藏起來） */
+  .player-shell .player-settings.is-open .seg__legend {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    margin-bottom: 0.25rem;
+    font-size: 0.7rem;
+  }
+
+  /* 面板裡的控制項縮小一號（觸控目標仍有 36px） */
+  .player-settings .seg__track {
+    gap: 0.2rem;
+    padding: 0.2rem;
+  }
+
+  .player-settings .seg__face {
+    min-height: 36px;
+    padding: 0.2rem;
+    gap: var(--space-xs);
+    font-size: 0.8rem;
+  }
+
+  .player-settings .lang-picker .seg__face {
+    padding-right: 0.55rem;
+  }
+
+  .player-settings .lang-picker__box {
+    width: 18px;
+    height: 18px;
+  }
+
+  .player-settings .seg__swatch {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+  }
+
+  .player-settings .size-slider__row {
+    min-height: 36px;
+  }
+
+  .player-settings .size-slider input[type='range'] {
+    width: 120px;
+    height: 36px;
+  }
+
+  .player-settings .toggle {
+    min-height: 36px;
+  }
+}
+
+@keyframes settings-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 /* 全螢幕：整個容器（影片＋字幕＋工具列）一起放大 */
